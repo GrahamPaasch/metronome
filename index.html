@@ -266,6 +266,8 @@
     // State
     let timerId;
     let globalBeatCount = 0, globalMainBeatCount = 0;
+    let measureCount = 1;
+    let lastMainBeatIdx = null;
     let currentBpm = +bpmInput.value;
     let currentMeter = +tsSel.value;
     let currentSubdivision = +subdivisionSel.value;
@@ -488,11 +490,21 @@
       const sub = currentSubdivision;
       const isMain = (globalBeatCount % sub === 0);
       if (isMain) globalMainBeatCount++;
+      // figure out where we are "in the bar"
+
       const beatIdx = Math.floor(globalBeatCount/sub) % currentMeter;
-      const measure = Math.floor((globalMainBeatCount-1)/currentMeter)+1;
+
+      // detect the very first main‐beat of each measure
+      // (beatIdx === 0 means first beat of the bar)
+      if (isMain) {
+        if (beatIdx === 0 && lastMainBeatIdx !== 0) {
+          measureCount++;
+        }
+        lastMainBeatIdx = beatIdx;
+      }
 
       tempoChanges.forEach(r=>{
-        if (r.type==='sudden' && isMain && measure===r.startMeasure) {
+        if (r.type==='sudden' && isMain && measureCount===r.startMeasure) {
           currentBpm = r.newBpm;
           if (r.newMeter) {
             currentMeter = r.newMeter;
@@ -535,7 +547,7 @@
     }
 
     function startMetronome() {
-      globalBeatCount=0; globalMainBeatCount=0;
+      globalBeatCount=0; globalMainBeatCount=0; measureCount=1; lastMainBeatIdx=null;
       tempoChanges.forEach(r=>{ r._inProgress=false; r._meterChanged=false; });
       currentBpm = +bpmInput.value;
       currentMeter = +tsSel.value;
