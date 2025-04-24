@@ -486,24 +486,33 @@
     }
 
     // Scheduler
-    function doTick() {
+function doTick() {
       const sub = currentSubdivision;
       const isMain = (globalBeatCount % sub === 0);
-      // compute beat index within current measure
-      const beatIdx = Math.floor(globalBeatCount / sub) % currentMeter;
+      // capture meter before any sudden-change
+      const preMeter = currentMeter;
+      const beatIdx = Math.floor(globalBeatCount / sub) % preMeter;
 
       if (isMain) {
-        // Apply sudden meter/BPM change on the last beat *before* the target measure
+        // 1) play main beat under old meter
+        const isAccent = accentCheckboxes[beatIdx]?.checked;
+        playMain(isAccent);
+
+        // 2) bump measureCount on last beat of old meter
+        if (beatIdx === preMeter - 1 && lastMainBeatIdx !== null) {
+          measureCount++;
+        }
+        lastMainBeatIdx = beatIdx;
+        globalMainBeatCount++;
+
+        // 3) apply sudden-change for next beat
         tempoChanges.forEach(r => {
           if (
             r.type === 'sudden' &&
-            isMain &&
-            measureCount === r.startMeasure - 1 &&    // one measure earlier
-            beatIdx === currentMeter - 1               // on the very last beat of that measure
+            measureCount === r.startMeasure - 1 &&  // one measure before
+            beatIdx === preMeter - 1                // last beat of that measure
           ) {
-            // update BPM
             currentBpm = r.newBpm;
-            // if there’s a meter change, apply it now so it takes effect next beat
             if (r.newMeter) {
               currentMeter = r.newMeter;
               tsSel.value = String(r.newMeter);
@@ -512,11 +521,11 @@
           }
         });
 
-        // Apply gradual changes over duration (unchanged)
+        // 4) gradual changes (unchanged)
         tempoChanges.forEach(r => {
           if (r.type === 'gradual') {
-            const startBeat = (r.startMeasure - 1) * currentMeter;
-            const totalBeats = r.duration * currentMeter;
+            const startBeat = (r.startMeasure - 1) * preMeter;
+            const totalBeats = r.duration * preMeter;
             if (
               globalMainBeatCount >= startBeat &&
               globalMainBeatCount <= startBeat + totalBeats
@@ -538,26 +547,17 @@
           }
         });
 
-        // Play the main beat and increment measure count when we wrap around
-        const isAccent = accentCheckboxes[beatIdx]?.checked;
-        playMain(isAccent);
-
-        if (beatIdx === 0 && lastMainBeatIdx !== null) {
-          measureCount++;
-        }
-        lastMainBeatIdx = beatIdx;
-        globalMainBeatCount++;
       } else {
-        // Subdivision clicks
+        // subdivision clicks unchanged
         playSub();
       }
 
-      // Flash the indicator, advance global counter & schedule next
       flash();
       globalBeatCount++;
       const interval = (60 / currentBpm) * 1000 / currentSubdivision;
       timerId = setTimeout(doTick, interval);
     }
+
 
     function startMetronome() {
       globalBeatCount = 0;
