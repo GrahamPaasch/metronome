@@ -493,14 +493,17 @@
       const beatIdx = Math.floor(globalBeatCount / sub) % currentMeter;
 
       if (isMain) {
-        // Apply any sudden changes exactly on the first beat of the target measure
+        // Apply sudden meter/BPM change on the last beat *before* the target measure
         tempoChanges.forEach(r => {
           if (
             r.type === 'sudden' &&
-            measureCount === r.startMeasure &&
-            beatIdx === 0
+            isMain &&
+            measureCount === r.startMeasure - 1 &&    // one measure earlier
+            beatIdx === currentMeter - 1               // on the very last beat of that measure
           ) {
+            // update BPM
             currentBpm = r.newBpm;
+            // if there’s a meter change, apply it now so it takes effect next beat
             if (r.newMeter) {
               currentMeter = r.newMeter;
               tsSel.value = String(r.newMeter);
