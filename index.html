@@ -489,68 +489,94 @@
     function doTick() {
       const sub = currentSubdivision;
       const isMain = (globalBeatCount % sub === 0);
-      if (isMain) globalMainBeatCount++;
-      // figure out where we are "in the bar"
+      // compute beat index within current measure
+      const beatIdx = Math.floor(globalBeatCount / sub) % currentMeter;
 
-      const beatIdx = Math.floor(globalBeatCount/sub) % currentMeter;
-
-      // detect the very first main‐beat of each measure
-      // (beatIdx === 0 means first beat of the bar)
       if (isMain) {
-        // only bump measureCount on a true bar-boundary (beatIdx=0),
-        // and not on the very first beat when lastMainBeatIdx===null
-        if (
-          beatIdx === 0 &&
-          lastMainBeatIdx !== null &&    // <-- skip if we haven't seen any beat yet
-          lastMainBeatIdx !== 0          // <-- skip the “carry-over” edge
-        ) {
+        // Apply any sudden changes exactly on the first beat of the target measure
+        tempoChanges.forEach(r => {
+          if (
+            r.type === 'sudden' &&
+            measureCount === r.startMeasure &&
+            beatIdx === 0
+          ) {
+            currentBpm = r.newBpm;
+            if (r.newMeter) {
+              currentMeter = r.newMeter;
+              tsSel.value = String(r.newMeter);
+              updateAccentPattern();
+            }
+          }
+        });
+
+        // Apply gradual changes over duration (unchanged)
+        tempoChanges.forEach(r => {
+          if (r.type === 'gradual') {
+            const startBeat = (r.startMeasure - 1) * currentMeter;
+            const totalBeats = r.duration * currentMeter;
+            if (
+              globalMainBeatCount >= startBeat &&
+              globalMainBeatCount <= startBeat + totalBeats
+            ) {
+              if (!r._inProgress) {
+                r._inProgress = true;
+                r._initialBpm = currentBpm;
+              }
+              const elapsed = globalMainBeatCount - startBeat;
+              const ratio = Math.min(elapsed / totalBeats, 1);
+              currentBpm = r._initialBpm + ratio * (r.newBpm - r._initialBpm);
+              if (r.newMeter && ratio >= 1 && !r._meterChanged) {
+                currentMeter = r.newMeter;
+                tsSel.value = String(r.newMeter);
+                updateAccentPattern();
+                r._meterChanged = true;
+              }
+            }
+          }
+        });
+
+        // Play the main beat and increment measure count when we wrap around
+        const isAccent = accentCheckboxes[beatIdx]?.checked;
+        playMain(isAccent);
+
+        if (beatIdx === 0 && lastMainBeatIdx !== null) {
           measureCount++;
         }
         lastMainBeatIdx = beatIdx;
+        globalMainBeatCount++;
+      } else {
+        // Subdivision clicks
+        playSub();
       }
 
-      tempoChanges.forEach(r=>{
-        // Apply the change BEFORE the first beat of the bar
-        if (r.type === 'sudden' && isMain && measureCount === r.startMeasure - 1 && beatIdx === currentMeter - 1) {
-          currentBpm = r.newBpm;
-          if (r.newMeter) {
-            currentMeter = r.newMeter;
-            tsSel.value = String(r.newMeter);
-            updateAccentPattern();
-          }
-        }
-        if (r.type==='gradual') {
-          const startBeat = (r.startMeasure-1)*currentMeter;
-          const totalBeats = r.duration*currentMeter;
-          if (globalMainBeatCount>=startBeat && globalMainBeatCount<=startBeat+totalBeats) {
-            if (!r._inProgress) {
-              r._inProgress = true;
-              r._initialBpm = currentBpm;
-            }
-            const elapsed = globalMainBeatCount-startBeat;
-            const ratio   = Math.min(elapsed/totalBeats,1);
-            currentBpm = r._initialBpm + ratio*(r.newBpm-r._initialBpm);
-            if (r.newMeter && ratio>=1 && !r._meterChanged) {
-              currentMeter = r.newMeter;
-              tsSel.value   = String(r.newMeter);
-              updateAccentPattern();
-              r._meterChanged = true;
-            }
-          }
-        }
-      });
-
-      if (!audioCtx) initAudio();
-      if (!isMain) playSub();
-      else {
-        const isAccent = accentCheckboxes[beatIdx % accentCheckboxes.length]?.checked ?? false;
-        playMain(isAccent);
-      }
+      // Flash the indicator, advance global counter & schedule next
       flash();
-
       globalBeatCount++;
-      const interval = (60/currentBpm)*1000/currentSubdivision;
+      const interval = (60 / currentBpm) * 1000 / currentSubdivision;
       timerId = setTimeout(doTick, interval);
+    }
+
+    function startMetronome() {
+      globalBeatCount = 0;
+      globalMainBeatCount = 0;
+      measureCount = 1;
+      lastMainBeatIdx = null;
+      tempoChanges.forEach(r => {
+        r._inProgress = false;
+        r._meterChanged = false;
+      });
+      currentBpm = +bpmInput.value;
+      currentMeter = +tsSel.value;
+      currentSubdivision = +subdivisionSel.value;
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      doTick();
+    }
+
+    function stopMetronome() {
+      clearTimeout(timerId);
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
     }
 
     function startMetronome() {
