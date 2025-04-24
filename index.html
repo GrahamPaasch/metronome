@@ -384,6 +384,7 @@
     function playMain(isAccent) {
       initAudio();
       const tone = isAccent ? accentToneSel.value : toneSel.value;
+      const isAccent = accentCheckboxes[beatIdx % accentCheckboxes.length]?.checked ?? false;
       if (tone === 'wood') {
         playWood(isAccent);
         return;
@@ -510,7 +511,8 @@
       }
 
       tempoChanges.forEach(r=>{
-        if (r.type==='sudden' && isMain && measureCount===r.startMeasure) {
+        // Apply the change BEFORE the first beat of the bar
+        if (r.type === 'sudden' && isMain && measureCount === r.startMeasure - 1 && beatIdx === currentMeter - 1) {}
           currentBpm = r.newBpm;
           if (r.newMeter) {
             currentMeter = r.newMeter;
