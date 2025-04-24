@@ -384,7 +384,6 @@
     function playMain(isAccent) {
       initAudio();
       const tone = isAccent ? accentToneSel.value : toneSel.value;
-      const isAccent = accentCheckboxes[beatIdx % accentCheckboxes.length]?.checked ?? false;
       if (tone === 'wood') {
         playWood(isAccent);
         return;
@@ -544,7 +543,7 @@
       if (!audioCtx) initAudio();
       if (!isMain) playSub();
       else {
-        const isAccent = accentCheckboxes[beatIdx].checked;
+        const isAccent = accentCheckboxes[beatIdx % accentCheckboxes.length]?.checked ?? false;
         playMain(isAccent);
       }
       flash();
