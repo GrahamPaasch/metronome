@@ -512,7 +512,7 @@
 
       tempoChanges.forEach(r=>{
         // Apply the change BEFORE the first beat of the bar
-        if (r.type === 'sudden' && isMain && measureCount === r.startMeasure - 1 && beatIdx === currentMeter - 1) {}
+        if (r.type === 'sudden' && isMain && measureCount === r.startMeasure - 1 && beatIdx === currentMeter - 1) {
           currentBpm = r.newBpm;
           if (r.newMeter) {
             currentMeter = r.newMeter;
