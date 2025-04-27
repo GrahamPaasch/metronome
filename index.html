@@ -49,361 +49,491 @@
   </style>
 </head>
 <body>
-<h1>Browser Metronome</h1>
-<div class='controls'>
-  <fieldset class='section'>
-    <legend>Tempo</legend>
-    <div class='group'>
-      <label for='bpm'>BPM:</label>
-      <input type='number' id='bpm' value='100' min='30' max='300'>
-      <button id='tap'>Tap Tempo</button>
-      <button id='start'>Start</button>
-      <button id='stop' disabled>Stop</button>
-    </div>
-  </fieldset>
-  <fieldset class='section'>
-    <legend>Meter & Subdivision</legend>
-    <div class='group'>
-      <label for='timeSignature'>Time Signature:</label>
-      <select id='timeSignature'>
-        <option>2/4</option><option>3/4</option><option selected>4/4</option>
-        <option>5/4</option><option>6/8</option><option>7/8</option>
-        <option>9/8</option><option>11/8</option><option>13/8</option>
-      </select>
-      <label for='subdivision'>Subdivision:</label>
-      <select id='subdivision'>
-        <option value='1'>None</option>
-        <option value='2'>8th</option>
-        <option value='3'>Triplet</option>
-        <option value='4'>16th</option>
-        <option value="5">Quintuplet</option>
-      </select>
-    </div>
-  </fieldset>
-  <fieldset class='section'>
-    <legend>Accent Grouping</legend>
-    <div class='group'>
-      <label>Grouping Pattern:</label>
-      <select id='grouping'><option value=''>—Manual—</option></select>
-      <div id='accentPattern'></div>
-    </div>
-  </fieldset>
-  <fieldset class='section'>
-    <legend>Tones & Levels</legend>
-    <div class='group'>
-      <label>Main Tone:</label>
-      <select id='tone'><option value='click'>Click</option><option value='tick'>Tick</option><option value='bell'>Bell</option><option value='wood'>Woodblock</option></select>
-      <label>Main Volume:</label><input type='range' id='volume' min='0' max='1' step='0.01' value='1'>
-    </div>
-    <div class='group'>
-      <label>Accent Tone:</label>
-      <select id='accentTone'><option value='click'>Click</option><option value='tick'>Tick</option><option value='bell'>Bell</option><option value='wood'>Woodblock</option></select>
-      <label>Accent Volume:</label><input type='range' id='accentVolume' min='0' max='1' step='0.01' value='1'>
-    </div>
-    <div class='group'>
-      <label>Subdivision Tone:</label>
-      <select id='subdivisionTone'><option value='click'>Click</option><option value='tick'>Tick</option><option value='bell'>Bell</option><option value='wood'>Woodblock</option></select>
-      <label>Subdivision Volume:</label><input type='range' id='subdivisionVolume' min='0' max='1' step='0.01' value='0.6'>
-    </div>
-  </fieldset>
-  <fieldset class='section'>
-    <legend>Tempo Changes</legend>
-    <table id='tempoChangesTable'>
-      <thead><tr><th>Start Measure</th><th>Type</th><th>New BPM</th><th>New Meter</th><th>Duration</th><th>Action</th></tr></thead>
-      <tbody></tbody>
-    </table>
-    <div class='group'>
-      <label>Start Measure:</label><input type='number' id='changeStart' min='1' value='1'>
-      <label>Type:</label><select id='changeType'><option value='sudden'>Sudden</option><option value='gradual'>Gradual</option></select>
-      <label>New BPM:</label><input type='number' id='changeBpm' min='1' value='100'>
-      <label>New Meter:</label><select id='changeMeter'><option value=''> (same) </option><option>2/4</option><option>3/4</option><option>4/4</option><option>5/4</option><option>6/8</option><option>7/8</option><option>9/8</option><option>11/8</option><option>13/8</option></select>
-      <label>Duration:</label><input type='number' id='changeDuration' min='1' value='1'>
-      <button id='addChange'>Add Change</button>
-    </div>
-  </fieldset>
-  <fieldset class='section'>
-    <legend>Presets</legend>
-    <div class='group'>
-      <input type='text' id='presetName' placeholder='Preset name'>
-      <button id='savePreset'>Save</button>
-      <select id='presetList'><option value=''>-- Load Preset --</option></select>
-      <button id='loadPreset'>Load</button>
-      <button id='deletePreset'>Delete</button>
-    </div>
-  </fieldset>
-</div>
-<canvas id='notationCanvas' width='420' height='100'></canvas>
+  <h1>Browser Metronome</h1>
+  <div class="controls">
+    <fieldset class="section">
+      <legend>Tempo</legend>
+      <div class="group">
+        <label for="bpm">BPM:</label>
+        <input type="number" id="bpm" value="100" min="30" max="300">
+        <button id="tap">Tap Tempo</button>
+        <button id="start">Start</button>
+        <button id="stop" disabled>Stop</button>
+      </div>
+    </fieldset>
+    <fieldset class="section">
+      <legend>Meter &amp; Subdivision</legend>
+      <div class="group">
+        <label for="timeSignature">Time Signature:</label>
+        <select id="timeSignature">
+          <option>2/4</option><option>3/4</option><option selected>4/4</option>
+          <option>5/4</option><option>6/8</option><option>7/8</option>
+          <option>9/8</option><option>11/8</option><option>13/8</option>
+        </select>
+        <label for="subdivision">Subdivision:</label>
+        <select id="subdivision">
+          <option value="1">None</option>
+          <option value="2">8th</option>
+          <option value="3">Triplet</option>
+          <option value="4">16th</option>
+          <option value="5">Quintuplet</option>
+        </select>
+      </div>
+    </fieldset>
+    <fieldset class="section">
+      <legend>Accent Grouping</legend>
+      <div class="group">
+        <label>Grouping Pattern:</label>
+        <select id="grouping"><option value="">—Manual—</option></select>
+        <div id="accentPattern"></div>
+      </div>
+    </fieldset>
+    <fieldset class="section">
+      <legend>Tones &amp; Levels</legend>
+      <div class="group">
+        <label>Main Tone:</label>
+        <select id="tone">
+          <option value="click">Click</option>
+          <option value="tick">Tick</option>
+          <option value="bell">Bell</option>
+          <option value="wood">Woodblock</option>
+          <option value="kick">Kick</option>
+          <option value="snare">Snare</option>
+          <option value="hihat">Hihat</option>
+        </select>
+        <label>Main Volume:</label>
+        <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+      </div>
+      <div class="group">
+        <label>Accent Tone:</label>
+        <select id="accentTone">
+          <option value="click">Click</option>
+          <option value="tick">Tick</option>
+          <option value="bell">Bell</option>
+          <option value="wood">Woodblock</option>
+          <option value="kick">Kick</option>
+          <option value="snare">Snare</option>
+          <option value="hihat">Hihat</option>
+        </select>
+        <label>Accent Volume:</label>
+        <input type="range" id="accentVolume" min="0" max="1" step="0.01" value="1">
+      </div>
+      <div class="group">
+        <label>Subdivision Tone:</label>
+        <select id="subdivisionTone">
+          <option value="click">Click</option>
+          <option value="tick">Tick</option>
+          <option value="bell">Bell</option>
+          <option value="wood">Woodblock</option>
+          <option value="kick">Kick</option>
+          <option value="snare">Snare</option>
+          <option value="hihat">Hihat</option>
+        </select>
+        <label>Subdivision Volume:</label>
+        <input type="range" id="subdivisionVolume" min="0" max="1" step="0.01" value="0.6">
+      </div>
+    </fieldset>
+    <fieldset class="section">
+      <legend>Tempo Changes</legend>
+      <table id="tempoChangesTable">
+        <thead>
+          <tr><th>Start Measure</th><th>Type</th><th>New BPM</th><th>New Meter</th><th>Duration</th><th>Action</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="group">
+        <label>Start Measure:</label>
+        <input type="number" id="changeStart" min="1" value="1">
+        <label>Type:</label>
+        <select id="changeType">
+          <option value="sudden">Sudden</option>
+          <option value="gradual">Gradual</option>
+        </select>
+        <label>New BPM:</label>
+        <input type="number" id="changeBpm" min="1" value="100">
+        <label>New Meter:</label>
+        <select id="changeMeter">
+          <option value=""> (same) </option>
+          <option>2/4</option><option>3/4</option><option>4/4</option>
+          <option>5/4</option><option>6/8</option><option>7/8</option>
+          <option>9/8</option><option>11/8</option><option>13/8</option>
+        </select>
+        <label>Duration:</label>
+        <input type="number" id="changeDuration" min="1" value="1">
+        <button id="addChange">Add Change</button>
+      </div>
+    </fieldset>
+    <fieldset class="section">
+      <legend>Presets</legend>
+      <div class="group">
+        <input type="text" id="presetName" placeholder="Preset name">
+        <button id="savePreset">Save</button>
+        <select id="presetList"><option value="">-- Load Preset --</option></select>
+        <button id="loadPreset">Load</button>
+        <button id="deletePreset">Delete</button>
+      </div>
+    </fieldset>
+  </div>
 
-<script>
-document.addEventListener('DOMContentLoaded',() =>{
-  const DEBUG=true;
+  <canvas id="notationCanvas" width="420" height="100"></canvas>
 
-  /* ---------- Audio ---------- */
-  let audioCtx, noiseBuf;
-  function initAudio(){
-    if(audioCtx) return;
-    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
-    noiseBuf=audioCtx.createBuffer(1,audioCtx.sampleRate,audioCtx.sampleRate);
-    const d=noiseBuf.getChannelData(0);
-    for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
-  }
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const DEBUG = true;
 
-  /* ---------- UI Refs ---------- */
-  const $=id=>document.getElementById(id);
-  const bpmInput=$('bpm'), subdivisionSel=$('subdivision'), tsSel=$('timeSignature');
-  const groupingSel=$('grouping'), accentCont=$('accentPattern');
-  const toneSel=$('tone'), accentToneSel=$('accentTone'), subToneSel=$('subdivisionTone');
-  const volCtrl=$('volume'), accentVolCtrl=$('accentVolume'), subVolCtrl=$('subdivisionVolume');
-  const tapBtn=$('tap'), startBtn=$('start'), stopBtn=$('stop');
-  const tableBody=document.querySelector('#tempoChangesTable tbody');
-  const changeStart=$('changeStart'), changeType=$('changeType'),changeBpm=$('changeBpm'),
-        changeMeter=$('changeMeter'), changeDur=$('changeDuration'), addChangeBtn=$('addChange');
-  const saveBtn=$('savePreset'), loadBtn=$('loadPreset'), deleteBtn=$('deletePreset'),
-        presetList=$('presetList'), presetName=$('presetName');
-  const canvas=$('notationCanvas'), ctx=canvas.getContext('2d');
-
-  /* ---------- Playback State ---------- */
-  let timerId, ticks=0, mainBeats=0;
-  let ticksInMeasure=0, measureCount=1;
-  let currentBpm=+bpmInput.value;
-  let currentMeter, currentSubdivision=+subdivisionSel.value;
-  let accentBoxes=[], taps=[];
-  let tempoChanges=[];
-
-  /* ---------- Grouping presets ---------- */
-  const groupingOpts={
-    5:[[2,3],[3,2]],
-    7:[[2,2,3],[2,3,2],[3,2,2]],
-    11:[[3,3,3,2],[3,3,2,3],[3,2,3,3],[2,3,3,3]],
-    13:[[3,3,3,2,2],[3,3,2,3,2],[3,2,3,3,2],[2,3,3,3,2]]
-  };
-  function updateGroupingOpts(){
-    const prev=groupingSel.value;
-    const num=parseInt(tsSel.value,10);
-    groupingSel.innerHTML="<option value=''>—Manual—</option>";
-    (groupingOpts[num]||[]).forEach(g=>{
-      const opt=document.createElement('option');
-      opt.value=g.join(',');
-      opt.textContent=g.join(' + ');
-      groupingSel.appendChild(opt);
-    });
-    if(prev && [...groupingSel.options].some(o=>o.value===prev)) groupingSel.value=prev;
-  }
-  function updateAccentPattern(){
-    accentCont.innerHTML=''; accentBoxes=[];
-    const beats=currentMeter;
-    const checks=Array(beats).fill(false);
-    if(groupingSel.value){
-      let idx=0;
-      groupingSel.value.split(',').map(Number).forEach(n=>{checks[idx]=true;idx+=n;});
-    }else checks[0]=true;
-    checks.forEach((on,i)=>{
-      const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=on;
-      const lbl=document.createElement('label'); lbl.textContent=i+1; lbl.appendChild(cb);
-      accentCont.appendChild(lbl); accentBoxes.push(cb);
-    });
-  }
-
-  /* ---------- Tempo‑change table ---------- */
-  function renderTempoChanges(){
-    tableBody.innerHTML='';
-    tempoChanges.forEach((r,i)=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${r.startMeasure}</td><td>${r.type}</td><td>${Math.round(r.newBpm)}</td><td>${r.newMeter||'—'}</td><td>${r.duration}</td><td><button class='remove-change' data-i='${i}'>✕</button></td>`;
-      tableBody.appendChild(tr);
-    });
-    document.querySelectorAll('.remove-change').forEach(btn=>{
-      btn.onclick=()=>{tempoChanges.splice(+btn.dataset.i,1);renderTempoChanges();};
-    });
-  }
-  addChangeBtn.onclick=()=>{
-    const rule={
-      startMeasure:Math.max(1,parseInt(changeStart.value,10)),
-      type:changeType.value,
-      newBpm:Math.max(1,parseInt(changeBpm.value,10)),
-      newMeter:changeMeter.value||null,
-      duration:Math.max(1,parseInt(changeDur.value,10)),
-      _inProgress:false,_meterChanged:false,_applied:false
-    };
-    tempoChanges.push(rule);
-    tempoChanges.sort((a,b)=>a.startMeasure-b.startMeasure);
-    renderTempoChanges();
-    if(DEBUG) console.log('Added tempo change',rule);
-  };
-
-  /* ---------- Canvas drawing ---------- */
-  function drawNotation(barTick){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    const totalTicks=currentMeter*currentSubdivision;
-    const spacing=canvas.width/totalTicks;
-    for(let i=0;i<=totalTicks;i++){
-      const x=i*spacing;
-      if(i%currentSubdivision===0){
-        ctx.strokeStyle='#000'; ctx.lineWidth=2;
-        ctx.beginPath();ctx.moveTo(x,10);ctx.lineTo(x,canvas.height-10);ctx.stroke();
-      }else{
-        ctx.strokeStyle='#666'; ctx.lineWidth=1;
-        ctx.beginPath();ctx.moveTo(x,canvas.height/2-10);ctx.lineTo(x,canvas.height/2+10);ctx.stroke();
+      /* ---------- Audio ---------- */
+      let audioCtx, noiseBuf;
+      function initAudio() {
+        if (audioCtx) return;
+        audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+        noiseBuf = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+        const d = noiseBuf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       }
-    }
-    const px=barTick*spacing;
-    ctx.strokeStyle='red'; ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,canvas.height);ctx.stroke();
-  }
 
-  /* ---------- Sound helpers ---------- */
-  function playWood(vol){
-    initAudio();
-    const now=audioCtx.currentTime;
-    const src=audioCtx.createBufferSource(); src.buffer=noiseBuf;
-    const filt=audioCtx.createBiquadFilter(); filt.type='bandpass'; filt.frequency.value=2000; filt.Q.value=5;
-    const gain=audioCtx.createGain();
-    src.connect(filt);filt.connect(gain);gain.connect(audioCtx.destination);
-    gain.gain.setValueAtTime(vol,now);
-    gain.gain.exponentialRampToValueAtTime(0.0001,now+0.05);
-    src.start(now);src.stop(now+0.05);
-  }
-  function oscType(name){return name==='click'?'square':name==='tick'?'sine':'triangle';}
-  function oscFreq(name){return name==='click'?1000:name==='tick'?600:1200;}
-  function playTone(name,vol){
-    initAudio();
-    if(name==='wood') return playWood(vol);
-    const now=audioCtx.currentTime;
-    const osc=audioCtx.createOscillator();const gain=audioCtx.createGain();
-    if(name==='click'){
-      const filt=audioCtx.createBiquadFilter();filt.type='highpass';filt.frequency.value=1500;
-      osc.connect(filt);filt.connect(gain);
-    }else osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.type=oscType(name); osc.frequency.setValueAtTime(oscFreq(name),now);
-    gain.gain.setValueAtTime(0,now); gain.gain.linearRampToValueAtTime(vol,now+0.001);
-    gain.gain.exponentialRampToValueAtTime(0.0001,now+0.03);
-    osc.start(now);osc.stop(now+0.03);
-  }
+      /* ---------- UI Refs ---------- */
+      const $ = id => document.getElementById(id);
+      const bpmInput = $('bpm'),
+            subdivisionSel = $('subdivision'),
+            tsSel = $('timeSignature');
+      const groupingSel = $('grouping'),
+            accentCont = $('accentPattern');
+      const toneSel = $('tone'),
+            accentToneSel = $('accentTone'),
+            subToneSel = $('subdivisionTone');
+      const volCtrl = $('volume'),
+            accentVolCtrl = $('accentVolume'),
+            subVolCtrl = $('subdivisionVolume');
+      const tapBtn = $('tap'),
+            startBtn = $('start'),
+            stopBtn = $('stop');
+      const tableBody = document.querySelector('#tempoChangesTable tbody');
+      const changeStart = $('changeStart'),
+            changeType = $('changeType'),
+            changeBpm = $('changeBpm'),
+            changeMeter = $('changeMeter'),
+            changeDur = $('changeDuration'),
+            addChangeBtn = $('addChange');
+      const saveBtn = $('savePreset'),
+            loadBtn = $('loadPreset'),
+            deleteBtn = $('deletePreset'),
+            presetList = $('presetList'),
+            presetName = $('presetName');
+      const canvas = $('notationCanvas'),
+            ctx = canvas.getContext('2d');
 
-  /* ---------- Scheduler ---------- */
-  function doTick(){
-    const sub=currentSubdivision;
-    const isMain=(ticks%sub===0);
-    if(isMain) mainBeats++;
-    const beatIdx=Math.floor(ticksInMeasure/sub);           /* 0‑based beat in bar */
+      /* ---------- Playback State ---------- */
+      let timerId, ticks = 0, mainBeats = 0;
+      let ticksInMeasure = 0, measureCount = 1;
+      let currentBpm = +bpmInput.value,
+          currentMeter, currentSubdivision = +subdivisionSel.value;
+      let accentBoxes = [], taps = [], tempoChanges = [];
 
-    /* ----- tempo‑changes ----- */
-    tempoChanges.forEach(r=>{
-      /** Sudden **/
-      if(r.type==='sudden' && !r._applied && isMain && measureCount===r.startMeasure){
-        currentBpm=r.newBpm;
-        if(r.newMeter){
-          currentMeter=parseInt(r.newMeter.split('/')[0],10);
-          tsSel.value=r.newMeter;
-          updateGroupingOpts();updateAccentPattern();
-        }
-        ticksInMeasure=0;                                   // restart bar
-        r._applied=true;
-        if(DEBUG) console.log('Sudden change applied',{currentBpm,currentMeter});
+      /* ---------- Grouping presets ---------- */
+      const groupingOpts = {
+        5: [[2,3],[3,2]],
+        7: [[2,2,3],[2,3,2],[3,2,2]],
+        11: [[3,3,3,2],[3,3,2,3],[3,2,3,3],[2,3,3,3]],
+        13: [[3,3,3,2,2],[3,3,2,3,2],[3,2,3,3,2],[2,3,3,3,2]]
+      };
+      function updateGroupingOpts() {
+        const prev = groupingSel.value;
+        const num = parseInt(tsSel.value, 10);
+        groupingSel.innerHTML = "<option value=''>—Manual—</option>";
+        (groupingOpts[num] || []).forEach(g => {
+          const opt = document.createElement('option');
+          opt.value = g.join(',');
+          opt.textContent = g.join(' + ');
+          groupingSel.appendChild(opt);
+        });
+        if (prev && [...groupingSel.options].some(o => o.value === prev))
+          groupingSel.value = prev;
       }
-      /** Gradual **/
-      if(r.type==='gradual'){
-        const totalBeats=r.duration*currentMeter;
-        const startBeat=(r.startMeasure-1)*currentMeter;
-        if(mainBeats>=startBeat && mainBeats<=startBeat+totalBeats){
-          if(!r._inProgress){r._inProgress=true;r._initialBpm=currentBpm;}
-          const ratio=(mainBeats-startBeat)/totalBeats;
-          currentBpm=r._initialBpm+ratio*(r.newBpm-r._initialBpm);
-          if(r.newMeter && ratio>=1 && !r._meterChanged){
-            currentMeter=parseInt(r.newMeter.split('/')[0],10);
-            tsSel.value=r.newMeter;
-            updateGroupingOpts();updateAccentPattern();
-            r._meterChanged=true;
-            ticksInMeasure=0;
+      function updateAccentPattern() {
+        accentCont.innerHTML = ''; accentBoxes = [];
+        const beats = currentMeter;
+        const checks = Array(beats).fill(false);
+        if (groupingSel.value) {
+          let idx = 0;
+          groupingSel.value.split(',').map(Number)
+            .forEach(n => { checks[idx] = true; idx += n; });
+        } else checks[0] = true;
+        checks.forEach((on, i) => {
+          const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = on;
+          const lbl = document.createElement('label'); lbl.textContent = i+1; lbl.appendChild(cb);
+          accentCont.appendChild(lbl); accentBoxes.push(cb);
+        });
+      }
+
+      /* ---------- Tempo-change table ---------- */
+      function renderTempoChanges() {
+        tableBody.innerHTML = '';
+        tempoChanges.forEach((r, i) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML =
+            `<td>${r.startMeasure}</td>` +
+            `<td>${r.type}</td>` +
+            `<td>${Math.round(r.newBpm)}</td>` +
+            `<td>${r.newMeter || '—'}</td>` +
+            `<td>${r.duration}</td>` +
+            `<td><button class='remove-change' data-i='${i}'>✕</button></td>`;
+          tableBody.appendChild(tr);
+        });
+        document.querySelectorAll('.remove-change').forEach(btn => {
+          btn.onclick = () => { tempoChanges.splice(+btn.dataset.i, 1); renderTempoChanges(); };
+        });
+      }
+      addChangeBtn.onclick = () => {
+        const rule = {
+          startMeasure: Math.max(1, parseInt(changeStart.value, 10)),
+          type: changeType.value,
+          newBpm: Math.max(1, parseInt(changeBpm.value, 10)),
+          newMeter: changeMeter.value || null,
+          duration: Math.max(1, parseInt(changeDur.value, 10)),
+          _inProgress: false, _meterChanged: false, _applied: false
+        };
+        tempoChanges.push(rule);
+        tempoChanges.sort((a, b) => a.startMeasure - b.startMeasure);
+        renderTempoChanges();
+        if (DEBUG) console.log('Added tempo change', rule);
+      };
+
+      /* ---------- Canvas drawing ---------- */
+      function drawNotation(barTick) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const totalTicks = currentMeter * currentSubdivision;
+        const spacing = canvas.width / totalTicks;
+        for (let i = 0; i <= totalTicks; i++) {
+          const x = i * spacing;
+          if (i % currentSubdivision === 0) {
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(x, 10); ctx.lineTo(x, canvas.height - 10); ctx.stroke();
+          } else {
+            ctx.strokeStyle = '#666'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x, canvas.height/2 - 10);
+            ctx.lineTo(x, canvas.height/2 + 10); ctx.stroke();
           }
         }
+        const px = barTick * spacing;
+        ctx.strokeStyle = 'red'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, canvas.height); ctx.stroke();
       }
+
+      /* ---------- Sound helpers ---------- */
+      function playWood(vol) {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const src = audioCtx.createBufferSource(); src.buffer = noiseBuf;
+        const filt = audioCtx.createBiquadFilter(); filt.type = 'bandpass'; filt.frequency.value = 2000; filt.Q.value = 5;
+        const gain = audioCtx.createGain();
+        src.connect(filt); filt.connect(gain); gain.connect(audioCtx.destination);
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+        src.start(now); src.stop(now + 0.05);
+      }
+      function playKick(vol) {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(50, now + 0.5);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+        osc.start(now); osc.stop(now + 0.5);
+      }
+      function playSnare(vol) {
+        const now = audioCtx.currentTime;
+        const noise = audioCtx.createBufferSource(); noise.buffer = noiseBuf;
+        const band = audioCtx.createBiquadFilter(); band.type = 'bandpass'; band.frequency.value = 1000; band.Q.value = 0.7;
+        const gain = audioCtx.createGain();
+        noise.connect(band); band.connect(gain); gain.connect(audioCtx.destination);
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+        noise.start(now); noise.stop(now + 0.2);
+      }
+      function playHiHat(vol) {
+        const now = audioCtx.currentTime;
+        const noise = audioCtx.createBufferSource(); noise.buffer = noiseBuf;
+        const high = audioCtx.createBiquadFilter(); high.type = 'highpass'; high.frequency.value = 6000;
+        const gain = audioCtx.createGain();
+        noise.connect(high); high.connect(gain); gain.connect(audioCtx.destination);
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+        noise.start(now); noise.stop(now + 0.05);
+      }
+      function oscType(name) { return name === 'click' ? 'square' : name === 'tick' ? 'sine' : 'triangle'; }
+      function oscFreq(name) { return name === 'click' ? 1000 : name === 'tick' ? 600 : 1200; }
+      function playTone(name, vol) {
+        initAudio();
+        if (name === 'wood')   return playWood(vol);
+        if (name === 'kick')   return playKick(vol);
+        if (name === 'snare')  return playSnare(vol);
+        if (name === 'hihat')  return playHiHat(vol);
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+        if (name === 'click') {
+          const filt = audioCtx.createBiquadFilter(); filt.type = 'highpass'; filt.frequency.value = 1500;
+          osc.connect(filt); filt.connect(gain);
+        } else osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = oscType(name); osc.frequency.setValueAtTime(oscFreq(name), now);
+        gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(vol, now + 0.001);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.03);
+        osc.start(now); osc.stop(now + 0.03);
+      }
+
+      /* ---------- Scheduler ---------- */
+      function doTick() {
+        const sub = currentSubdivision;
+        const isMain = (ticks % sub === 0);
+        if (isMain) mainBeats++;
+        const beatIdx = Math.floor(ticksInMeasure / sub);
+
+        /* ----- tempo-changes ----- */
+        tempoChanges.forEach(r => {
+          /** Sudden **/
+          if (r.type === 'sudden' && !r._applied && isMain && measureCount === r.startMeasure) {
+            currentBpm = r.newBpm;
+            if (r.newMeter) {
+              currentMeter = parseInt(r.newMeter.split('/')[0], 10);
+              tsSel.value = r.newMeter;
+              updateGroupingOpts(); updateAccentPattern();
+            }
+            ticksInMeasure = 0;
+            r._applied = true;
+            if (DEBUG) console.log('Sudden change applied', { currentBpm, currentMeter });
+          }
+          /** Gradual **/
+          if (r.type === 'gradual') {
+            const totalBeats = r.duration * currentMeter;
+            const startBeat = (r.startMeasure - 1) * currentMeter;
+            if (mainBeats >= startBeat && mainBeats <= startBeat + totalBeats) {
+              if (!r._inProgress) { r._inProgress = true; r._initialBpm = currentBpm; }
+              const ratio = (mainBeats - startBeat) / totalBeats;
+              currentBpm = r._initialBpm + ratio * (r.newBpm - r._initialBpm);
+              if (r.newMeter && ratio >= 1 && !r._meterChanged) {
+                currentMeter = parseInt(r.newMeter.split('/')[0], 10);
+                tsSel.value = r.newMeter;
+                updateGroupingOpts(); updateAccentPattern();
+                r._meterChanged = true;
+                ticksInMeasure = 0;
+              }
+            }
+          }
+        });
+
+        /* ----- play sound ----- */
+        const accent = accentBoxes[beatIdx]?.checked ?? false;
+        if (!audioCtx) initAudio();
+        if (isMain)
+          playTone(accent ? accentToneSel.value : toneSel.value,
+                   accent ? +accentVolCtrl.value : +volCtrl.value);
+        else
+          playTone(subToneSel.value, +subVolCtrl.value);
+
+        /* ----- debug log ----- */
+        if (DEBUG && isMain) {
+          console.log(`Measure ${measureCount}, Beat ${beatIdx+1}/${currentMeter}, accent=${accent}`);
+        }
+
+        /* ----- update notation & counters ----- */
+        drawNotation(ticksInMeasure);
+        ticks++; ticksInMeasure++;
+        if (ticksInMeasure >= currentMeter * currentSubdivision) {
+          ticksInMeasure = 0; measureCount++;
+        }
+
+        const interval = (60 / currentBpm) * 1000 / currentSubdivision;
+        timerId = setTimeout(doTick, interval);
+      }
+
+      function startMetronome() {
+        ticks = mainBeats = 0; ticksInMeasure = 0; measureCount = 1;
+        tempoChanges.forEach(r => { r._inProgress = false; r._meterChanged = false; r._applied = false; });
+        currentBpm = +bpmInput.value; currentSubdivision = +subdivisionSel.value;
+        currentMeter = parseInt(tsSel.value.split('/')[0], 10);
+        updateGroupingOpts(); updateAccentPattern(); drawNotation(0);
+        startBtn.disabled = true; stopBtn.disabled = false;
+        doTick();
+        if (DEBUG) console.log('Metronome started', { currentBpm, currentMeter, currentSubdivision });
+      }
+      function stopMetronome() {
+        clearTimeout(timerId);
+        startBtn.disabled = false; stopBtn.disabled = true;
+      }
+
+      /* ---------- Tap tempo ---------- */
+      tapBtn.onclick = () => {
+        taps.push(Date.now()); if (taps.length > 5) taps.shift();
+        if (taps.length > 1) {
+          const iv = taps.slice(1).map((t, i) => t - taps[i]);
+          bpmInput.value = Math.round(60000 / (iv.reduce((a, b) => a + b) / iv.length));
+        }
+      };
+
+      /* ---------- Presets ---------- */
+      function loadPresets() {
+        const store = JSON.parse(localStorage.getItem('metronomePresets') || '{}');
+        presetList.innerHTML = "<option value=''>-- Load Preset --</option>";
+        Object.keys(store).forEach(n => presetList.appendChild(new Option(n, n)));
+      }
+      saveBtn.onclick = () => {
+        const name = presetName.value.trim(); if (!name) return alert('Enter a name');
+        const store = JSON.parse(localStorage.getItem('metronomePresets') || '{}');
+        store[name] = {
+          bpm: bpmInput.value,
+          subdivision: subdivisionSel.value,
+          timeSignature: tsSel.value,
+          grouping: groupingSel.value,
+          tone: toneSel.value,
+          volume: volCtrl.value,
+          accentTone: accentToneSel.value,
+          accentVolume: accentVolCtrl.value,
+          subdivisionTone: subToneSel.value,
+          subdivisionVolume: subVolCtrl.value,
+          tempoChanges
+        };
+        localStorage.setItem('metronomePresets', JSON.stringify(store));
+        loadPresets();
+        presetName.value = '';
+      };
+      loadBtn.onclick = () => {
+        const name = presetList.value; if (!name) return;
+        const p = JSON.parse(localStorage.getItem('metronomePresets'))[name];
+        bpmInput.value = p.bpm; subdivisionSel.value = p.subdivision; tsSel.value = p.timeSignature;
+        groupingSel.value = p.grouping; toneSel.value = p.tone; volCtrl.value = p.volume;
+        accentToneSel.value = p.accentTone; accentVolCtrl.value = p.accentVolume;
+        subToneSel.value = p.subdivisionTone; subVolCtrl.value = p.subdivisionVolume;
+        tempoChanges = p.tempoChanges || [];
+        updateGroupingOpts(); updateAccentPattern(); renderTempoChanges();
+      };
+      deleteBtn.onclick = () => {
+        const name = presetList.value; if (!name) return;
+        const store = JSON.parse(localStorage.getItem('metronomePresets') || '{}');
+        delete store[name];
+        localStorage.setItem('metronomePresets', JSON.stringify(store));
+        loadPresets();
+      };
+
+      /* ---------- Event hooks ---------- */
+      startBtn.onclick = startMetronome;
+      stopBtn.onclick = stopMetronome;
+      tsSel.onchange = () => {
+        currentMeter = parseInt(tsSel.value.split('/')[0], 10);
+        updateGroupingOpts(); updateAccentPattern(); drawNotation(0);
+      };
+      subdivisionSel.onchange = () => {
+        currentSubdivision = +subdivisionSel.value; drawNotation(0);
+      };
+      groupingSel.onchange = updateAccentPattern;
+
+      /* ---------- Init ---------- */
+      initAudio();
+      loadPresets();
+      tsSel.dispatchEvent(new Event('change'));
     });
-
-    /* ----- play sound ----- */
-    const accent=accentBoxes[beatIdx]?.checked ?? false;
-    if(!audioCtx) initAudio();
-    if(isMain) playTone(accent?accentToneSel.value:toneSel.value, accent?+accentVolCtrl.value:+volCtrl.value);
-    else        playTone(subToneSel.value,+subVolCtrl.value);
-
-    /* ----- debug log ----- */
-    if(DEBUG && isMain){
-      console.log(`Measure ${measureCount}, Beat ${beatIdx+1}/${currentMeter}, accent=${accent}`);
-    }
-
-    /* ----- update notation & counters ----- */
-    drawNotation(ticksInMeasure);
-    ticks++; ticksInMeasure++;
-    if(ticksInMeasure>=currentMeter*currentSubdivision){ ticksInMeasure=0; measureCount++; }
-
-    const interval=(60/currentBpm)*1000/currentSubdivision;
-    timerId=setTimeout(doTick,interval);
-  }
-
-  function startMetronome(){
-    ticks=mainBeats=0; ticksInMeasure=0; measureCount=1;
-    tempoChanges.forEach(r=>{r._inProgress=false;r._meterChanged=false;r._applied=false;});
-    currentBpm=+bpmInput.value; currentSubdivision=+subdivisionSel.value;
-    currentMeter=parseInt(tsSel.value.split('/')[0],10);
-    updateGroupingOpts();updateAccentPattern();drawNotation(0);
-    startBtn.disabled=true;stopBtn.disabled=false;
-    doTick();
-    if(DEBUG) console.log('Metronome started',{currentBpm,currentMeter,currentSubdivision});
-  }
-  function stopMetronome(){clearTimeout(timerId);startBtn.disabled=false;stopBtn.disabled=true;}
-
-  /* ---------- Tap tempo ---------- */
-  tapBtn.onclick=()=>{
-    taps.push(Date.now()); if(taps.length>5) taps.shift();
-    if(taps.length>1){
-      const iv=taps.slice(1).map((t,i)=>t-taps[i]);
-      bpmInput.value=Math.round(60000/(iv.reduce((a,b)=>a+b)/iv.length));
-    }
-  };
-
-  /* ---------- Presets ---------- */
-  function loadPresets(){
-    const store=JSON.parse(localStorage.getItem('metronomePresets')||'{}');
-    presetList.innerHTML="<option value=''>-- Load Preset --</option>";
-    Object.keys(store).forEach(n=>presetList.appendChild(new Option(n,n)));
-  }
-  saveBtn.onclick=()=>{
-    const name=presetName.value.trim(); if(!name) return alert('Enter a name');
-    const store=JSON.parse(localStorage.getItem('metronomePresets')||'{}');
-    store[name]={
-      bpm:bpmInput.value, subdivision:subdivisionSel.value, timeSignature:tsSel.value,
-      grouping:groupingSel.value, tone:toneSel.value, volume:volCtrl.value,
-      accentTone:accentToneSel.value, accentVolume:accentVolCtrl.value,
-      subdivisionTone:subToneSel.value, subdivisionVolume:subVolCtrl.value,
-      tempoChanges
-    };
-    localStorage.setItem('metronomePresets',JSON.stringify(store)); loadPresets(); presetName.value='';
-  };
-  loadBtn.onclick=()=>{
-    const name=presetList.value;if(!name)return;
-    const p=JSON.parse(localStorage.getItem('metronomePresets'))[name];
-    bpmInput.value=p.bpm; subdivisionSel.value=p.subdivision; tsSel.value=p.timeSignature;
-    groupingSel.value=p.grouping; toneSel.value=p.tone; volCtrl.value=p.volume;
-    accentToneSel.value=p.accentTone; accentVolCtrl.value=p.accentVolume;
-    subToneSel.value=p.subdivisionTone; subVolCtrl.value=p.subdivisionVolume;
-    tempoChanges=p.tempoChanges||[]; updateGroupingOpts();updateAccentPattern();renderTempoChanges();
-  };
-  deleteBtn.onclick=()=>{
-    const name=presetList.value;if(!name)return;
-    const store=JSON.parse(localStorage.getItem('metronomePresets')||'{}'); delete store[name];
-    localStorage.setItem('metronomePresets',JSON.stringify(store)); loadPresets();
-  };
-
-  /* ---------- Event hooks ---------- */
-  startBtn.onclick=startMetronome; stopBtn.onclick=stopMetronome;
-  tsSel.onchange=()=>{currentMeter=parseInt(tsSel.value.split('/')[0],10);updateGroupingOpts();updateAccentPattern();drawNotation(0);};
-  subdivisionSel.onchange=()=>{currentSubdivision=+subdivisionSel.value;drawNotation(0);};
-  groupingSel.onchange=updateAccentPattern;
-
-  /* ---------- Init ---------- */
-  initAudio();loadPresets();tsSel.dispatchEvent(new Event('change'));
-});
-</script>
+  </script>
 </body>
 </html>
