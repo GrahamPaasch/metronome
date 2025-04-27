@@ -61,6 +61,7 @@
         <button id="stop" disabled>Stop</button>
       </div>
     </fieldset>
+
     <fieldset class="section">
       <legend>Meter &amp; Subdivision</legend>
       <div class="group">
@@ -80,6 +81,7 @@
         </select>
       </div>
     </fieldset>
+
     <fieldset class="section">
       <legend>Accent Grouping</legend>
       <div class="group">
@@ -88,6 +90,7 @@
         <div id="accentPattern"></div>
       </div>
     </fieldset>
+
     <fieldset class="section">
       <legend>Tones &amp; Levels</legend>
       <div class="group">
@@ -133,6 +136,7 @@
         <input type="range" id="subdivisionVolume" min="0" max="1" step="0.01" value="0.6">
       </div>
     </fieldset>
+
     <fieldset class="section">
       <legend>Tempo Changes</legend>
       <table id="tempoChangesTable">
@@ -163,6 +167,17 @@
         <button id="addChange">Add Change</button>
       </div>
     </fieldset>
+
+    <fieldset class="section">
+      <legend>Measure Loop</legend>
+      <div class="group">
+        <label for="playMeasures">Play Measures:</label>
+        <input type="number" id="playMeasures" min="0" value="0">
+        <label for="muteMeasures">Mute Measures:</label>
+        <input type="number" id="muteMeasures" min="0" value="0">
+      </div>
+    </fieldset>
+
     <fieldset class="section">
       <legend>Presets</legend>
       <div class="group">
@@ -214,6 +229,8 @@
             changeMeter = $('changeMeter'),
             changeDur = $('changeDuration'),
             addChangeBtn = $('addChange');
+      const playMeasuresInput = $('playMeasures'),
+            muteMeasuresInput = $('muteMeasures');
       const saveBtn = $('savePreset'),
             loadBtn = $('loadPreset'),
             deleteBtn = $('deletePreset'),
@@ -391,6 +408,16 @@
         if (isMain) mainBeats++;
         const beatIdx = Math.floor(ticksInMeasure / sub);
 
+        /* ----- measure loop ----- */
+        const playM = +playMeasuresInput.value;
+        const muteM = +muteMeasuresInput.value;
+        let measureMuted = false;
+        if (playM > 0 && muteM >= 0) {
+          const cycleLen = playM + muteM;
+          const idx = (measureCount - 1) % cycleLen;
+          if (idx >= playM) measureMuted = true;
+        }
+
         /* ----- tempo-changes ----- */
         tempoChanges.forEach(r => {
           /** Sudden **/
@@ -425,17 +452,22 @@
         });
 
         /* ----- play sound ----- */
-        const accent = accentBoxes[beatIdx]?.checked ?? false;
-        if (!audioCtx) initAudio();
-        if (isMain)
-          playTone(accent ? accentToneSel.value : toneSel.value,
-                   accent ? +accentVolCtrl.value : +volCtrl.value);
-        else
-          playTone(subToneSel.value, +subVolCtrl.value);
+        if (!measureMuted) {
+          const accent = accentBoxes[beatIdx]?.checked ?? false;
+          if (!audioCtx) initAudio();
+          if (isMain) {
+            playTone(
+              accent ? accentToneSel.value : toneSel.value,
+              accent ? +accentVolCtrl.value : +volCtrl.value
+            );
+          } else {
+            playTone(subToneSel.value, +subVolCtrl.value);
+          }
+        }
 
         /* ----- debug log ----- */
         if (DEBUG && isMain) {
-          console.log(`Measure ${measureCount}, Beat ${beatIdx+1}/${currentMeter}, accent=${accent}`);
+          console.log(`Measure ${measureCount}, Beat ${beatIdx + 1}/${currentMeter}, muted=${measureMuted}`);
         }
 
         /* ----- update notation & counters ----- */
@@ -493,7 +525,9 @@
           accentVolume: accentVolCtrl.value,
           subdivisionTone: subToneSel.value,
           subdivisionVolume: subVolCtrl.value,
-          tempoChanges
+          tempoChanges,
+          playMeasures: +playMeasuresInput.value,
+          muteMeasures: +muteMeasuresInput.value
         };
         localStorage.setItem('metronomePresets', JSON.stringify(store));
         loadPresets();
@@ -507,6 +541,8 @@
         accentToneSel.value = p.accentTone; accentVolCtrl.value = p.accentVolume;
         subToneSel.value = p.subdivisionTone; subVolCtrl.value = p.subdivisionVolume;
         tempoChanges = p.tempoChanges || [];
+        playMeasuresInput.value = p.playMeasures || 0;
+        muteMeasuresInput.value = p.muteMeasures || 0;
         updateGroupingOpts(); updateAccentPattern(); renderTempoChanges();
       };
       deleteBtn.onclick = () => {
