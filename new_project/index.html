@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Practice Notation App</title>
+    <script src="https://unpkg.com/vexflow@4.0.0/build/cjs/vexflow.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        #book { border: 1px solid #ccc; padding: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Music Practice Notation App</h1>
+    <div id="book"></div>
+
+    <script>
+        const { Factory } = Vex;
+        const vf = new Factory({ renderer: { elementId: 'book' } });
+        const score = vf.EasyScore();
+        const system = vf.System();
+
+        system.addStave({
+            voices: [
+                score.voice(score.notes('C4/q, D4, E4, F4'))
+            ]
+        }).addClef('treble').addTimeSignature('4/4');
+
+        vf.draw();
+    </script>
+</body>
+</html>
