@@ -31,21 +31,23 @@
     .group button,
     .group select,
     .group input[type='number'],
-    .group input[type='range'] {
+    .group input[type='range'],
+    .group input[type='checkbox'] {
       font-size: 1rem; padding: 0.5rem;
       border: 1px solid #ccc; border-radius: 4px;
       background: #fafafa;
     }
-    #start { background: #4CAF50; color:#fff; border:none; cursor:pointer; padding:0.5rem 1rem;}
-    #start:hover { background:#45A049;}
-    #addChange { background:#4CAF50; color:#fff; border:none; cursor:pointer; padding:0.5rem 1rem;}
-    #addChange:hover { background:#45A049;}
-    #notationCanvas{ margin-top:2rem; border:1px solid #ccc; background:#fff;}
-    table{ width:100%; border-collapse:collapse; margin-top:0.5rem;}
-    th,td{ border:1px solid #ddd; padding:0.5rem; text-align:center;}
-    th{ background:#f7f7f7;}
-    .remove-change{ background:#e74c3c; color:#fff; border:none; padding:0.25rem 0.5rem; cursor:pointer;}
-    .remove-change:hover{ background:#c0392b;}
+    .group input[type='checkbox'] { width: auto; }
+    #start { background: #4CAF50; color:#fff; border:none; cursor:pointer; padding:0.5rem 1rem; }
+    #start:hover { background:#45A049; }
+    #addChange { background:#4CAF50; color:#fff; border:none; cursor:pointer; padding:0.5rem 1rem; }
+    #addChange:hover { background:#45A049; }
+    #notationCanvas { margin-top:2rem; border:1px solid #ccc; background:#fff; }
+    table { width:100%; border-collapse:collapse; margin-top:0.5rem; }
+    th,td { border:1px solid #ddd; padding:0.5rem; text-align:center; }
+    th { background:#f7f7f7; }
+    .remove-change { background:#e74c3c; color:#fff; border:none; padding:0.25rem 0.5rem; cursor:pointer; }
+    .remove-change:hover { background:#c0392b; }
   </style>
 </head>
 <body>
@@ -178,6 +180,35 @@
       </div>
     </fieldset>
 
+    <!-- New Polyrhythm Section -->
+    <fieldset class="section">
+      <legend>Polyrhythm</legend>
+      <div class="group">
+        <label for="polyNumerator">Numerator:</label>
+        <input type="number" id="polyNumerator" min="1" value="3">
+        <label for="polyDenominator">Denominator:</label>
+        <input type="number" id="polyDenominator" min="1" value="4">
+      </div>
+      <div class="group">
+        <label for="polyTone">Poly Tone:</label>
+        <select id="polyTone">
+          <option value="click">Click</option>
+          <option value="tick">Tick</option>
+          <option value="bell">Bell</option>
+          <option value="wood">Woodblock</option>
+          <option value="kick">Kick</option>
+          <option value="snare">Snare</option>
+          <option value="hihat">Hihat</option>
+        </select>
+        <label for="polyVolume">Poly Volume:</label>
+        <input type="range" id="polyVolume" min="0" max="1" step="0.01" value="1">
+      </div>
+      <div class="group">
+        <label for="polyEnable">Enable:</label>
+        <input type="checkbox" id="polyEnable">
+      </div>
+    </fieldset>
+
     <fieldset class="section">
       <legend>Presets</legend>
       <div class="group">
@@ -238,6 +269,9 @@
             presetName = $('presetName');
       const canvas = $('notationCanvas'),
             ctx = canvas.getContext('2d');
+     // Polyrhythm refs
+      const polyNumInput = $('polyNumerator'), polyDenInput = $('polyDenominator');
+      const polyToneSel = $('polyTone'), polyVolCtrl = $('polyVolume'), polyEnableChk = $('polyEnable');
 
       /* ---------- Playback State ---------- */
       let timerId, ticks = 0, mainBeats = 0;
@@ -245,6 +279,7 @@
       let currentBpm = +bpmInput.value,
           currentMeter, currentSubdivision = +subdivisionSel.value;
       let accentBoxes = [], taps = [], tempoChanges = [];
+      let polyAcc = 0;
 
       /* ---------- Grouping presets ---------- */
       const groupingOpts = {
@@ -464,6 +499,17 @@
             playTone(subToneSel.value, +subVolCtrl.value);
           }
         }
+        // Polyrhythm
+        if (polyEnableChk.checked) {
+          const num = parseInt(polyNumInput.value, 10);
+          const den = parseInt(polyDenInput.value, 10);
+          const intervalTicks = (den * currentSubdivision) / num;
+          polyAcc += 1;
+          if (polyAcc >= intervalTicks) {
+            playTone(polyToneSel.value, +polyVolCtrl.value);
+            polyAcc -= intervalTicks;
+          }
+        }
 
         /* ----- debug log ----- */
         if (DEBUG && isMain) {
@@ -482,8 +528,10 @@
       }
 
       function startMetronome() {
-        ticks = mainBeats = 0; ticksInMeasure = 0; measureCount = 1;
-        tempoChanges.forEach(r => { r._inProgress = false; r._meterChanged = false; r._applied = false; });
+        // reset state
+        ticks = mainBeats = 0;
+        ticksInMeasure = 0; measureCount = 1; polyAcc = 0;
+        tempoChanges.forEach(r => { r._inProgress = r._meterChanged = r._applied = false; });
         currentBpm = +bpmInput.value; currentSubdivision = +subdivisionSel.value;
         currentMeter = parseInt(tsSel.value.split('/')[0], 10);
         updateGroupingOpts(); updateAccentPattern(); drawNotation(0);
@@ -527,7 +575,13 @@
           subdivisionVolume: subVolCtrl.value,
           tempoChanges,
           playMeasures: +playMeasuresInput.value,
-          muteMeasures: +muteMeasuresInput.value
+          muteMeasures: +muteMeasuresInput.value,
+          // polyrhythm
+          polyNumerator: +polyNumInput.value,
+          polyDenominator: +polyDenInput.value,
+          polyTone: polyToneSel.value,
+          polyVolume: +polyVolCtrl.value,
+          polyEnable: polyEnableChk.checked
         };
         localStorage.setItem('metronomePresets', JSON.stringify(store));
         loadPresets();
@@ -544,6 +598,12 @@
         playMeasuresInput.value = p.playMeasures || 0;
         muteMeasuresInput.value = p.muteMeasures || 0;
         updateGroupingOpts(); updateAccentPattern(); renderTempoChanges();
+        // polyrhythm load
+        polyNumInput.value = p.polyNumerator || 3;
+        polyDenInput.value = p.polyDenominator || 4;
+        polyToneSel.value = p.polyTone || 'click';
+        polyVolCtrl.value = p.polyVolume != null ? p.polyVolume : 1;
+        polyEnableChk.checked = !!p.polyEnable;
       };
       deleteBtn.onclick = () => {
         const name = presetList.value; if (!name) return;
