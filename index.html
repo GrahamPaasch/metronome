@@ -184,10 +184,8 @@
     <fieldset class="section">
       <legend>Polyrhythm</legend>
       <div class="group">
-        <label for="polyNumerator">Numerator:</label>
-        <input type="number" id="polyNumerator" min="1" value="3">
-        <label for="polyDenominator">Denominator:</label>
-        <input type="number" id="polyDenominator" min="1" value="4">
+        <label for="polyCount">Crossbeats per measure:</label>
+        <input type="number" id="polyCount" min="1" value="3">
       </div>
       <div class="group">
         <label for="polyTone">Poly Tone:</label>
@@ -269,9 +267,11 @@
             presetName = $('presetName');
       const canvas = $('notationCanvas'),
             ctx = canvas.getContext('2d');
-     // Polyrhythm refs
-      const polyNumInput = $('polyNumerator'), polyDenInput = $('polyDenominator');
-      const polyToneSel = $('polyTone'), polyVolCtrl = $('polyVolume'), polyEnableChk = $('polyEnable');
+      // Polyrhythm refs
+      const polyCountInput = document.getElementById('polyCount');
+      const polyToneSel = document.getElementById('polyTone');
+      const polyVolCtrl = document.getElementById('polyVolume');
+      const polyEnableChk = document.getElementById('polyEnable');
 
       /* ---------- Playback State ---------- */
       let timerId, ticks = 0, mainBeats = 0;
@@ -371,14 +371,12 @@
         ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, canvas.height); ctx.stroke();
         // Polyrhythm visual markers (added)
         if (polyEnableChk.checked) {
-          const num = parseInt(polyNumInput.value, 10);
+          const num = parseInt(polyCountInput.value, 10);
           ctx.strokeStyle = 'blue'; ctx.lineWidth = 1;
           for (let i = 1; i < num; i++) {
             const x = (i * canvas.width) / num;
-            ctx.beginPath();
-            ctx.moveTo(x, canvas.height * 0.25);
-            ctx.lineTo(x, canvas.height * 0.75);
-            ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x, canvas.height * 0.25);
+            ctx.lineTo(x, canvas.height * 0.75); ctx.stroke();
           }
         }
       }
@@ -513,7 +511,7 @@
         }
         // Polyrhythm
         if (polyEnableChk.checked) {
-          const num = parseInt(polyNumInput.value, 10);
+          const num = parseInt(polyCountInput.value, 10);
           const measureTicks = currentMeter * currentSubdivision;
           const intervalTicks = measureTicks / num;
           polyAcc++;
@@ -591,8 +589,7 @@
           playMeasures: +playMeasuresInput.value,
           muteMeasures: +muteMeasuresInput.value,
           // polyrhythm
-          polyNumerator: +polyNumInput.value,
-          polyDenominator: +polyDenInput.value,
+          polyCount: +polyCountInput.value,
           polyTone: polyToneSel.value,
           polyVolume: +polyVolCtrl.value,
           polyEnable: polyEnableChk.checked
@@ -613,8 +610,7 @@
         muteMeasuresInput.value = p.muteMeasures || 0;
         updateGroupingOpts(); updateAccentPattern(); renderTempoChanges();
         // polyrhythm load
-        polyNumInput.value = p.polyNumerator || 3;
-        polyDenInput.value = p.polyDenominator || 4;
+        polyCountInput.value = p.polyCount || 3;
         polyToneSel.value = p.polyTone || 'click';
         polyVolCtrl.value = p.polyVolume != null ? p.polyVolume : 1;
         polyEnableChk.checked = !!p.polyEnable;
