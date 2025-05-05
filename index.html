@@ -409,6 +409,8 @@
       function playKick(vol) {
         const now = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
+        osc.type = oscType(name);
+        osc.frequency.value = oscFreq(name);
         const gain = audioCtx.createGain();
         osc.type = 'sine';
         osc.frequency.setValueAtTime(150, now);
@@ -458,7 +460,28 @@
         gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.03);
         osc.start(now); osc.stop(now + 0.03);
       }
-
+      function schedulePolyBeats(barStartTime) {
+        if (!polyEnableChk.checked) return;
+        const count = parseInt(polyCountInput.value, 10);
+        const barDuration = (60 / currentBpm) * currentMeter; // seconds per bar
+        for (let i = 1; i < count; i++) {
+          const when = barStartTime + (i / count) * barDuration;
+          playToneAtTime(polyToneSel.value, +polyVolCtrl.value, when);
+        }
+      }
+      function playToneAtTime(name, vol, when) {
+        initAudio();
+        const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+        if (name === 'click') {
+          const filt = audioCtx.createBiquadFilter(); filt.type = 'highpass'; filt.frequency.value = 1500;
+          osc.connect(filt); filt.connect(gain);
+        } else osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = oscType(name); osc.frequency.setValueAtTime(oscFreq(name), when);
+        gain.gain.setValueAtTime(0, when); gain.gain.linearRampToValueAtTime(vol, when + 0.001);
+        gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.03);
+        osc.start(when); osc.stop(when + 0.03);
+      }
       /* ---------- Scheduler ---------- */
       function doTick() {
         const sub = currentSubdivision;
@@ -543,9 +566,11 @@
 
         // Reset on new measure (added polyAcc reset)
         if (ticksInMeasure >= currentMeter * currentSubdivision) {
-          ticksInMeasure = 0; measureCount++; updateCrossPositions();
+          ticksInMeasure = 0;
+          measureCount++;
+          const now = audioCtx.currentTime;
+          schedulePolyBeats(now); // ***** SCHEDULE FRACTIONAL-TIME POLY BEATS *****
         }
-
         const interval = (60 / currentBpm) * 1000 / currentSubdivision;
         timerId = setTimeout(doTick, interval);
       }
