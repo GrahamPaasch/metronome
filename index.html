@@ -509,6 +509,11 @@
             playTone(subToneSel.value, +subVolCtrl.value);
           }
         }
+
+        /* ----- update notation & counters ----- */
+        drawNotation(ticksInMeasure);
+        ticks++; ticksInMeasure++;
+
         // Polyrhythm
         if (polyEnableChk.checked) {
           const num = parseInt(polyCountInput.value, 10);
@@ -517,6 +522,7 @@
           polyAcc++;
           if (polyAcc >= intervalTicks) {
             playTone(polyToneSel.value, +polyVolCtrl.value);
+            if (DEBUG) console.log(`Poly tick: acc=${polyAcc.toFixed(2)} / ${intervalTicks.toFixed(2)}`);
             polyAcc -= intervalTicks;
           }
         }
