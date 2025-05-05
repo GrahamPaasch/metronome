@@ -281,6 +281,14 @@
       let accentBoxes = [], taps = [], tempoChanges = [];
       let polyAcc = 0;
 
+      // === Polyrhythm state & helper ===
+      let crossPositions = [];
+      function updateCrossPositions() {
+        if (!polyEnableChk.checked) {
+          crossPositions = [];
+          return;
+        }
+      }
       /* ---------- Grouping presets ---------- */
       const groupingOpts = {
         5: [[2,3],[3,2]],
@@ -372,6 +380,11 @@
         // Polyrhythm visual markers (added)
         if (polyEnableChk.checked) {
           const num = parseInt(polyCountInput.value, 10);
+          const measureTicks = currentMeter * currentSubdivision;
+          crossPositions = [];
+          for (let i = 0; i < num; i++) {
+            crossPositions.push(Math.round((i * measureTicks) / num));
+          }
           ctx.strokeStyle = 'blue'; ctx.lineWidth = 1;
           for (let i = 1; i < num; i++) {
             const x = (i * canvas.width) / num;
@@ -512,14 +525,10 @@
 
         // Polyrhythm
         if (polyEnableChk.checked) {
-          const num = parseInt(polyCountInput.value, 10);
-          const measureTicks = currentMeter * currentSubdivision;
-          const intervalTicks = measureTicks / num;
-          polyAcc++;
-          if (polyAcc >= intervalTicks) {
-            playTone(polyToneSel.value, +polyVolCtrl.value);
-            if (DEBUG) console.log(`Poly tick: acc=${polyAcc.toFixed(2)} / ${intervalTicks.toFixed(2)}`);
-            polyAcc -= intervalTicks;
+          for (const pos of crossPositions) {
+            if (ticksInMeasure === pos) {
+              playTone(polyToneSel.value, +polyVolCtrl.value);
+            }
           }
         }
 
@@ -534,7 +543,7 @@
 
         // Reset on new measure (added polyAcc reset)
         if (ticksInMeasure >= currentMeter * currentSubdivision) {
-          ticksInMeasure = 0; measureCount++; polyAcc = 0; // reset polyrhythm accumulator
+          ticksInMeasure = 0; measureCount++; updateCrossPositions();
         }
 
         const interval = (60 / currentBpm) * 1000 / currentSubdivision;
