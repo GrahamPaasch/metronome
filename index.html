@@ -366,9 +366,21 @@
             ctx.lineTo(x, canvas.height/2 + 10); ctx.stroke();
           }
         }
-        const px = barTick * spacing;
+        const px = barTick * (canvas.width / (currentMeter * currentSubdivision));
         ctx.strokeStyle = 'red'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, canvas.height); ctx.stroke();
+        // Polyrhythm visual markers (added)
+        if (polyEnableChk.checked) {
+          const num = parseInt(polyNumInput.value, 10);
+          ctx.strokeStyle = 'blue'; ctx.lineWidth = 1;
+          for (let i = 1; i < num; i++) {
+            const x = (i * canvas.width) / num;
+            ctx.beginPath();
+            ctx.moveTo(x, canvas.height * 0.25);
+            ctx.lineTo(x, canvas.height * 0.75);
+            ctx.stroke();
+          }
+        }
       }
 
       /* ---------- Sound helpers ---------- */
@@ -502,9 +514,9 @@
         // Polyrhythm
         if (polyEnableChk.checked) {
           const num = parseInt(polyNumInput.value, 10);
-          const den = parseInt(polyDenInput.value, 10);
-          const intervalTicks = (den * currentSubdivision) / num;
-          polyAcc += 1;
+          const measureTicks = currentMeter * currentSubdivision;
+          const intervalTicks = measureTicks / num;
+          polyAcc++;
           if (polyAcc >= intervalTicks) {
             playTone(polyToneSel.value, +polyVolCtrl.value);
             polyAcc -= intervalTicks;
@@ -519,8 +531,10 @@
         /* ----- update notation & counters ----- */
         drawNotation(ticksInMeasure);
         ticks++; ticksInMeasure++;
+
+        // Reset on new measure (added polyAcc reset)
         if (ticksInMeasure >= currentMeter * currentSubdivision) {
-          ticksInMeasure = 0; measureCount++;
+          ticksInMeasure = 0; measureCount++; polyAcc = 0; // reset polyrhythm accumulator
         }
 
         const interval = (60 / currentBpm) * 1000 / currentSubdivision;
