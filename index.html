@@ -268,10 +268,10 @@
       const canvas = $('notationCanvas'),
             ctx = canvas.getContext('2d');
       // Polyrhythm refs
-      const polyCountInput = document.getElementById('polyCount');
-      const polyToneSel = document.getElementById('polyTone');
-      const polyVolCtrl = document.getElementById('polyVolume');
-      const polyEnableChk = document.getElementById('polyEnable');
+      const polyCountInput = $('polyCount');
+      const polyToneSel = $('polyTone');
+      const polyVolCtrl = $('polyVolume');
+      const polyEnableChk = $('polyEnable');
 
       /* ---------- Playback State ---------- */
       let timerId, ticks = 0, mainBeats = 0;
