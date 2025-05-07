@@ -14,21 +14,32 @@
     <h1>Music Practice Notation App</h1>
     <div id="book"></div>
 
-    <script>
-        window.onload = function() {
-            const { Factory } = Vex.Flow;
-            const vf = new Factory({ renderer: { elementId: 'book' } });
-            const score = vf.EasyScore();
-            const system = vf.System();
-
-            system.addStave({
-                voices: [
-                    score.voice(score.notes('C4/q, D4, E4, F4'))
-                ]
-            }).addClef('treble').addTimeSignature('4/4');
-
-            vf.draw();
-        };
+<script>
+    window.onload = function() {
+        const { Factory } = Vex.Flow;
+        const vf     = new Factory({ renderer: { elementId: 'book' } });
+        const score  = vf.EasyScore();
+        const system = vf.System();
+    
+        // 1) Use a "whole note" duration token ("w")
+        const note = new Vex.Flow.StaveNote({
+        keys:     ["g/4"],  
+        duration: "w"
+        })
+        // you can still annotate it with an "x" if you like,
+        // though for true percussion you might switch clefs later
+        .addModifier(new Vex.Flow.Annotation("x"), 0);
+    
+        // 2) Wrap it in an array and specify 4/4 so the voice knows
+        //    this single "w" note fills the measure.
+        system.addStave({
+        voices: [
+            score.voice([note], { time: "4/4" })
+        ]
+        }).addTimeSignature('4/4');
+    
+        vf.draw();
+    };
     </script>
 </body>
 </html>
