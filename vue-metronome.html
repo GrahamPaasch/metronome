@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vue Metronome</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    .controls { display: flex; flex-direction: column; gap: 1rem; max-width: 600px; }
+    label { margin-right: 0.5rem; }
+    input, select { padding: 0.25rem; }
+    button { padding: 0.5rem 1rem; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <h1>Vue Metronome</h1>
+  <div class="controls">
+    <div>
+      <label>BPM:</label>
+      <input type="number" v-model.number="bpm" min="30" max="300">
+    </div>
+    <div>
+      <label>Time Signature:</label>
+      <input type="number" v-model.number="meter" min="1" max="12">
+    </div>
+    <div>
+      <label>Subdivision:</label>
+      <select v-model.number="subdiv">
+        <option :value="1">Quarter</option>
+        <option :value="2">8th</option>
+        <option :value="3">Triplet</option>
+        <option :value="4">16th</option>
+      </select>
+    </div>
+    <div>
+      <label>Polyrhythm Beats:</label>
+      <input type="number" v-model.number="polyCount" min="0" max="16">
+    </div>
+    <div>
+      <label>Polymeter Beats:</label>
+      <input type="number" v-model.number="polyMeter" min="0" max="16">
+    </div>
+    <div>
+      <label>Swing %:</label>
+      <input type="number" v-model.number="swing" min="0" max="100">
+    </div>
+    <div>
+      <label>Drone Hz:</label>
+      <input type="number" v-model.number="droneFreq" min="50" max="2000">
+      <label>Start Measure:</label>
+      <input type="number" v-model.number="droneStart" min="1">
+      <label>Duration (measures):</label>
+      <input type="number" v-model.number="droneDur" min="1">
+    </div>
+    <div>
+      <button @click="start" :disabled="running">Start</button>
+      <button @click="stop" :disabled="!running">Stop</button>
+    </div>
+  </div>
+</div>
+<script>
+const { createApp } = Vue;
+createApp({
+  data() {
+    return {
+      bpm: 100,
+      meter: 4,
+      subdiv: 1,
+      polyCount: 0,
+      polyMeter: 0,
+      swing: 0,
+      droneFreq: 220,
+      droneStart: 1,
+      droneDur: 1,
+      running: false,
+      _tick: 0,
+      _measure: 1,
+      _timer: null,
+      audioCtx: null,
+      droneOsc: null
+    };
+  },
+  methods: {
+    initAudio() {
+      if (!this.audioCtx) {
+        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    },
+    playClick() {
+      this.initAudio();
+      const osc = this.audioCtx.createOscillator();
+      const gain = this.audioCtx.createGain();
+      osc.type = 'square';
+      osc.connect(gain); gain.connect(this.audioCtx.destination);
+      gain.gain.setValueAtTime(0.5, this.audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.05);
+      osc.start(); osc.stop(this.audioCtx.currentTime + 0.05);
+    },
+    playDrone(start) {
+      if (this.droneFreq <= 0) return;
+      this.initAudio();
+      this.droneOsc = this.audioCtx.createOscillator();
+      this.droneOsc.frequency.value = this.droneFreq;
+      this.droneOsc.connect(this.audioCtx.destination);
+      this.droneOsc.start(start);
+      this.droneOsc.stop(start + (60/this.bpm) * this.meter * this.droneDur);
+    },
+    scheduleTick() {
+      const beatDur = 60000 / this.bpm / this.subdiv;
+      let interval = beatDur;
+      if (this.swing && this.subdiv === 2) {
+        interval = this._tick % 2 === 0
+          ? beatDur * (1 + this.swing/100)
+          : beatDur * (1 - this.swing/100);
+      }
+      this._timer = setTimeout(() => {
+        this.onTick();
+        this.scheduleTick();
+      }, interval);
+    },
+    onTick() {
+      const pos = this._tick % (this.meter * this.subdiv);
+      const beatIdx = this._tick % this.subdiv === 0;
+      const measureStart = pos === 0;
+      if (measureStart) {
+        this._measure++;
+        if (this._measure === this.droneStart) {
+          const start = this.audioCtx.currentTime;
+          this.playDrone(start);
+        }
+      }
+      if (beatIdx) this.playClick();
+      // polyrhythm click
+      if (this.polyCount > 1) {
+        const measureTicks = this.meter * this.subdiv;
+        const cross = Math.round((this.polyCount * pos) / measureTicks);
+        if ((this.polyCount * pos) % measureTicks === 0) this.playClick();
+      }
+      // polymeter click
+      if (this.polyMeter > 1) {
+        const crossPos = this._tick % (this.polyMeter * this.subdiv);
+        if (crossPos === 0) this.playClick();
+      }
+      this._tick++;
+    },
+    start() {
+      if (this.running) return;
+      this.initAudio();
+      this._tick = 0; this._measure = 1;
+      this.running = true;
+      this.scheduleTick();
+    },
+    stop() {
+      this.running = false;
+      clearTimeout(this._timer);
+      this._timer = null;
+      if (this.droneOsc) { this.droneOsc.stop(); this.droneOsc = null; }
+    }
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
