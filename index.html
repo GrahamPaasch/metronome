@@ -286,7 +286,7 @@
       let accentBoxes = [], accentToneBoxes = [], taps = [], tempoChanges = [];
       let polyAcc = 0;
 
-      // === Polyrhythm state & helper ===
+      // === Polyrhythm state ===
       let crossPositions = [];
       /* ---------- Grouping presets ---------- */
       const groupingOpts = {
@@ -579,7 +579,7 @@
         drawNotation(ticksInMeasure);
         ticks++; ticksInMeasure++;
 
-        // Reset on new measure (added polyAcc reset)
+        // Reset on new measure
         if (ticksInMeasure >= currentMeter * currentSubdivision) {
           ticksInMeasure = 0;
           measureCount++;
@@ -593,11 +593,13 @@
       function startMetronome() {
         // reset state
         ticks = mainBeats = 0;
-        ticksInMeasure = 0; measureCount = 1; polyAcc = 0;
+        ticksInMeasure = 0; measureCount = 1;
         tempoChanges.forEach(r => { r._inProgress = r._meterChanged = r._applied = false; });
         currentBpm = +bpmInput.value; currentSubdivision = +subdivisionSel.value;
         currentMeter = parseInt(tsSel.value.split('/')[0], 10);
         updateGroupingOpts(); updateAccentPattern(); drawNotation(0);
+        initAudio();
+        schedulePolyBeats(audioCtx.currentTime);
         startBtn.disabled = true; stopBtn.disabled = false;
         doTick();
         if (DEBUG) console.log('Metronome started', { currentBpm, currentMeter, currentSubdivision });
