@@ -48,6 +48,8 @@
     th { background:#f7f7f7; }
     .remove-change { background:#e74c3c; color:#fff; border:none; padding:0.25rem 0.5rem; cursor:pointer; }
     .remove-change:hover { background:#c0392b; }
+    #accentPattern label { display:inline-flex; align-items:center; margin-right:0.5rem; }
+    #accentPattern select { margin-left:0.25rem; }
   </style>
 </head>
 <body>
@@ -92,6 +94,18 @@
         <select id="grouping"><option value="">—Manual—</option></select>
         <div id="accentPattern"></div>
       </div>
+      <div class="group">
+        <label>Default Accent Tone:</label>
+        <select id="accentTone">
+          <option value="click">Click</option>
+          <option value="tick">Tick</option>
+          <option value="bell">Bell</option>
+          <option value="wood">Woodblock</option>
+          <option value="kick">Kick</option>
+          <option value="snare">Snare</option>
+          <option value="hihat">Hihat</option>
+        </select>
+      </div>
     </fieldset>
 
     <fieldset class="section">
@@ -111,16 +125,6 @@
         <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
       </div>
       <div class="group">
-        <label>Accent Tone:</label>
-        <select id="accentTone">
-          <option value="click">Click</option>
-          <option value="tick">Tick</option>
-          <option value="bell">Bell</option>
-          <option value="wood">Woodblock</option>
-          <option value="kick">Kick</option>
-          <option value="snare">Snare</option>
-          <option value="hihat">Hihat</option>
-        </select>
         <label>Accent Volume:</label>
         <input type="range" id="accentVolume" min="0" max="1" step="0.01" value="1">
       </div>
@@ -279,17 +283,11 @@
       let ticksInMeasure = 0, measureCount = 1;
       let currentBpm = +bpmInput.value,
           currentMeter, currentSubdivision = +subdivisionSel.value;
-      let accentBoxes = [], taps = [], tempoChanges = [];
+      let accentBoxes = [], accentToneBoxes = [], taps = [], tempoChanges = [];
       let polyAcc = 0;
 
       // === Polyrhythm state & helper ===
       let crossPositions = [];
-      function updateCrossPositions() {
-        if (!polyEnableChk.checked) {
-          crossPositions = [];
-          return;
-        }
-      }
       /* ---------- Grouping presets ---------- */
       const groupingOpts = {
         5: [[2,3],[3,2]],
@@ -310,8 +308,18 @@
         if (prev && [...groupingSel.options].some(o => o.value === prev))
           groupingSel.value = prev;
       }
+      function cloneToneSelect() {
+        const sel = document.createElement('select');
+        accentToneSel.querySelectorAll('option').forEach(o => {
+          const opt = document.createElement('option');
+          opt.value = o.value; opt.textContent = o.textContent;
+          sel.appendChild(opt);
+        });
+        sel.value = accentToneSel.value;
+        return sel;
+      }
       function updateAccentPattern() {
-        accentCont.innerHTML = ''; accentBoxes = [];
+        accentCont.innerHTML = ''; accentBoxes = []; accentToneBoxes = [];
         const beats = currentMeter;
         const checks = Array(beats).fill(false);
         if (groupingSel.value) {
@@ -321,8 +329,13 @@
         } else checks[0] = true;
         checks.forEach((on, i) => {
           const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = on;
-          const lbl = document.createElement('label'); lbl.textContent = i+1; lbl.appendChild(cb);
-          accentCont.appendChild(lbl); accentBoxes.push(cb);
+          const toneSel = cloneToneSelect();
+          const lbl = document.createElement('label');
+          lbl.textContent = i+1;
+          lbl.appendChild(cb);
+          lbl.appendChild(toneSel);
+          accentCont.appendChild(lbl);
+          accentBoxes.push(cb); accentToneBoxes.push(toneSel);
         });
       }
 
@@ -536,10 +549,11 @@
         /* ----- play sound ----- */
         if (!measureMuted) {
           const accent = accentBoxes[beatIdx]?.checked ?? false;
+          const tone = accentToneBoxes[beatIdx]?.value || accentToneSel.value;
           if (!audioCtx) initAudio();
           if (isMain) {
             playTone(
-              accent ? accentToneSel.value : toneSel.value,
+              accent ? tone : toneSel.value,
               accent ? +accentVolCtrl.value : +volCtrl.value
             );
           } else {
