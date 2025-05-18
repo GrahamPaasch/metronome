@@ -94,6 +94,18 @@
         <select id="grouping"><option value="">—Manual—</option></select>
         <div id="accentPattern"></div>
       </div>
+      <div class="group">
+        <label>Default Accent Tone:</label>
+        <select id="accentTone">
+          <option value="click">Click</option>
+          <option value="tick">Tick</option>
+          <option value="bell">Bell</option>
+          <option value="wood">Woodblock</option>
+          <option value="kick">Kick</option>
+          <option value="snare">Snare</option>
+          <option value="hihat">Hihat</option>
+        </select>
+      </div>
     </fieldset>
 
     <fieldset class="section">
@@ -113,16 +125,6 @@
         <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
       </div>
       <div class="group">
-        <label>Accent Tone:</label>
-        <select id="accentTone">
-          <option value="click">Click</option>
-          <option value="tick">Tick</option>
-          <option value="bell">Bell</option>
-          <option value="wood">Woodblock</option>
-          <option value="kick">Kick</option>
-          <option value="snare">Snare</option>
-          <option value="hihat">Hihat</option>
-        </select>
         <label>Accent Volume:</label>
         <input type="range" id="accentVolume" min="0" max="1" step="0.01" value="1">
       </div>
@@ -286,12 +288,6 @@
 
       // === Polyrhythm state & helper ===
       let crossPositions = [];
-      function updateCrossPositions() {
-        if (!polyEnableChk.checked) {
-          crossPositions = [];
-          return;
-        }
-      }
       /* ---------- Grouping presets ---------- */
       const groupingOpts = {
         5: [[2,3],[3,2]],
