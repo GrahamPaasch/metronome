@@ -391,8 +391,7 @@
           if (i === barTick) note.setStyle({ fillStyle: 'red', strokeStyle: 'red' });
           notes.push(note);
         }
-        const beatValue = parseInt(tsSel.value.split('/')[1], 10);
-        const voice = new VF.Voice({ num_beats: currentMeter, beat_value: beatValue })
+        const voice = new VF.Voice({ num_beats: total, beat_value: 4 * currentSubdivision })
           .addTickables(notes);
 
         new VF.Formatter().joinVoices([voice]).format([voice], 380);
