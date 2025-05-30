@@ -450,87 +450,44 @@
           stave.addClef('percussion').addTimeSignature(tsSel.value);
           stave.setContext(context).draw();
 
-          // Map subdivisions to note durations and create groups
-          const durMap = {
-            1: { duration: 'q', groupSize: 1, perBeat: 1 },    // quarter notes
-            2: { duration: '8', groupSize: 2, perBeat: 2 },    // eighth notes
-            3: { duration: '8', groupSize: 3, perBeat: 3 },    // triplets
-            4: { duration: '16', groupSize: 4, perBeat: 4 },   // sixteenth notes
-            5: { duration: '16', groupSize: 5, perBeat: 5 }    // quintuplets
-          };
-          
-          const { duration, groupSize, perBeat } = durMap[currentSubdivision] || durMap[1];
+          // Calculate total subdivisions
           const beatsInBar = parseInt(tsSel.value);
-          const total = beatsInBar * perBeat;
+          const total = beatsInBar * currentSubdivision;
           
           // Create notes with proper styling
           const notes = [];
-          const tupletGroups = [];
+          const beams = [];
           
-          for (let beat = 0; beat < beatsInBar; beat++) {
-            const beatNotes = [];
-            for (let i = 0; i < perBeat; i++) {
-              const globalIndex = beat * perBeat + i;
-              const note = new VF.StaveNote({ 
-                keys: ['b/4'], 
-                duration: duration + (globalIndex === barTick ? '' : 'r') // Use rests for non-current beats
-              });
-              
-              // Add styling for the current beat
-              if (globalIndex === barTick) {
-                note.setStyle({ fillStyle: 'red', strokeStyle: 'red' });
-              }
-              
-              // Add dots for compound meters (6/8, 9/8, 12/8)
-              if (tsSel.value.endsWith('/8') && duration === 'q') {
-                note.addDot(0);
-              }
-              
-              beatNotes.push(note);
-              notes.push(note);
+          // Always use 16th notes for visual clarity
+          for (let i = 0; i < total; i++) {
+            const note = new VF.StaveNote({ 
+              keys: ['b/4'], 
+              duration: '16' + (i === barTick ? '' : 'r') // Use rests for non-current beats
+            });
+            
+            // Add styling for the current beat
+            if (i === barTick) {
+              note.setStyle({ fillStyle: 'red', strokeStyle: 'red' });
             }
             
-            // Create tuplets/beams for each beat group
-            if (groupSize > 1) {
-              if (perBeat === 3) {
-                // Create tuplet for triplets
-                const tuplet = new VF.Tuplet(beatNotes, {
-                  num_notes: 3,
-                  notes_occupied: 2
-                });
-                tupletGroups.push(tuplet);
-              } else if (perBeat === 5) {
-                // Create tuplet for quintuplets
-                const tuplet = new VF.Tuplet(beatNotes, {
-                  num_notes: 5,
-                  notes_occupied: 4
-                });
-                tupletGroups.push(tuplet);
-              } else if (beatNotes.length > 1) {
-                // Create beam for regular groupings
-                const beam = new VF.Beam(beatNotes);
-                tupletGroups.push(beam);
-              }
+            notes.push(note);
+          }
+
+          // Create beams for groups of 4 sixteenth notes
+          for (let i = 0; i < notes.length; i += 4) {
+            const group = notes.slice(i, i + 4);
+            if (group.length > 1) {
+              const beam = new VF.Beam(group);
+              beams.push(beam);
             }
           }
 
           // Create voice with proper timing
-          let voice;
-          if (tsSel.value.endsWith('/8')) {
-            // Compound meter (6/8, 9/8, 12/8)
-            voice = new VF.Voice({ 
-              num_beats: beatsInBar/3, 
-              beat_value: 4,
-              resolution: VF.RESOLUTION 
-            }).addTickables(notes);
-          } else {
-            // Simple meter
-            voice = new VF.Voice({ 
-              num_beats: beatsInBar, 
-              beat_value: 4,
-              resolution: VF.RESOLUTION 
-            }).addTickables(notes);
-          }
+          const voice = new VF.Voice({ 
+            num_beats: beatsInBar, 
+            beat_value: 4,
+            resolution: VF.RESOLUTION 
+          }).addTickables(notes);
 
           // Format and draw
           new VF.Formatter()
@@ -538,7 +495,7 @@
             .format([voice], 380);
           
           voice.draw(context, stave);
-          tupletGroups.forEach(group => group.setContext(context).draw());
+          beams.forEach(beam => beam.setContext(context).draw());
 
           // Draw polyrhythm markers if enabled
           if (polyEnableChk.checked) {
