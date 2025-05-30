@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Browser Metronome</title>
+  <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
   <style>
     body {
       font-family: sans-serif;
@@ -42,7 +43,7 @@
     #start:hover { background:#45A049; }
     #addChange { background:#4CAF50; color:#fff; border:none; cursor:pointer; padding:0.5rem 1rem; }
     #addChange:hover { background:#45A049; }
-    #notationCanvas { margin-top:2rem; border:1px solid #ccc; background:#fff; }
+    #notation { margin-top:2rem; border:1px solid #ccc; background:#fff; }
     table { width:100%; border-collapse:collapse; margin-top:0.5rem; }
     th,td { border:1px solid #ddd; padding:0.5rem; text-align:center; }
     th { background:#f7f7f7; }
@@ -234,7 +235,7 @@
     </fieldset>
   </div>
 
-  <canvas id="notationCanvas" width="420" height="100"></canvas>
+  <div id="notation" style="width:420px;height:120px"></div>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -284,8 +285,7 @@
             deleteBtn = $('deletePreset'),
             presetList = $('presetList'),
             presetName = $('presetName');
-      const canvas = $('notationCanvas'),
-            ctx = canvas.getContext('2d');
+      const notationDiv = $('notation');
       // Polyrhythm refs
       const polyCountInput = $('polyCount');
       const polyToneSel = $('polyTone');
@@ -388,38 +388,36 @@
         if (DEBUG) console.log('Added tempo change', rule);
       };
 
-      /* ---------- Canvas drawing ---------- */
+      /* ---------- VexFlow drawing ---------- */
       function drawNotation(barTick) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const totalTicks = currentMeter * currentSubdivision;
-        const spacing = canvas.width / totalTicks;
-        for (let i = 0; i <= totalTicks; i++) {
-          const x = i * spacing;
-          if (i % currentSubdivision === 0) {
-            ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(x, 10); ctx.lineTo(x, canvas.height - 10); ctx.stroke();
-          } else {
-            ctx.strokeStyle = '#666'; ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(x, canvas.height/2 - 10);
-            ctx.lineTo(x, canvas.height/2 + 10); ctx.stroke();
-          }
+        notationDiv.innerHTML = '';
+        const VF = Vex.Flow;
+        const vf = new VF.Factory({ renderer: { elementId: 'notation', width: 420, height: 120 } });
+        const context = vf.getContext();
+        const stave = new VF.Stave(10, 40, 400);
+        stave.addClef('percussion').addTimeSignature(tsSel.value);
+        stave.setContext(context).draw();
+
+        const durMap = { 1: 'q', 2: '8', 3: '8', 4: '16', 5: '16' };
+        const dur = durMap[currentSubdivision] || 'q';
+        const total = currentMeter * currentSubdivision;
+        const notes = [];
+        for (let i = 0; i < total; i++) {
+          const note = new VF.StaveNote({ keys: ['b/4'], duration: dur });
+          if (i === barTick) note.setStyle({ fillStyle: 'red', strokeStyle: 'red' });
+          notes.push(note);
         }
-        const px = barTick * (canvas.width / (currentMeter * currentSubdivision));
-        ctx.strokeStyle = 'red'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, canvas.height); ctx.stroke();
-        // Polyrhythm visual markers (added)
+        const voice = new VF.Voice({ num_beats: total, beat_value: 4 * currentSubdivision })
+          .addTickables(notes);
+
+        new VF.Formatter().joinVoices([voice]).format([voice], 380);
+        voice.draw(context, stave);
+
         if (polyEnableChk.checked) {
           const num = parseInt(polyCountInput.value, 10);
-          const measureTicks = currentMeter * currentSubdivision;
           crossPositions = [];
           for (let i = 0; i < num; i++) {
-            crossPositions.push(Math.round((i * measureTicks) / num));
-          }
-          ctx.strokeStyle = 'blue'; ctx.lineWidth = 1;
-          for (let i = 1; i < num; i++) {
-            const x = (i * canvas.width) / num;
-            ctx.beginPath(); ctx.moveTo(x, canvas.height * 0.25);
-            ctx.lineTo(x, canvas.height * 0.75); ctx.stroke();
+            crossPositions.push(Math.round((i * total) / num));
           }
         }
       }
