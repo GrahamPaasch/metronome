@@ -301,9 +301,51 @@
       let polyAcc = 0;
       let startTime = 0; // Track start time for drift correction
 
-      // === Polyrhythm state ===
-      let crossPositions = [];
-      let scheduledPolyBeats = [];
+      // === Notation state ===
+      let vfFactory = null;
+      let vfContext = null;
+      let lastNotationState = null;
+
+      function initNotation() {
+        if (vfFactory) return;
+        const VF = Vex.Flow;
+        vfFactory = new VF.Factory({ 
+          renderer: { 
+            elementId: 'notation', 
+            width: 420, 
+            height: 120 
+          } 
+        });
+        vfContext = vfFactory.getContext();
+      }
+
+      function clearNotation() {
+        if (vfFactory) {
+          notationDiv.innerHTML = '';
+          vfFactory = null;
+          vfContext = null;
+        }
+      }
+
+      function getNotationState() {
+        return {
+          meter: currentMeter,
+          subdivision: currentSubdivision,
+          timeSignature: tsSel.value,
+          polyEnabled: polyEnableChk.checked,
+          polyCount: +polyCountInput.value
+        };
+      }
+
+      function hasNotationStateChanged() {
+        const newState = getNotationState();
+        if (!lastNotationState) return true;
+        
+        return Object.entries(newState).some(([key, value]) => 
+          lastNotationState[key] !== value
+        );
+      }
+
       /* ---------- Grouping presets ---------- */
       const groupingOpts = {
         5: [[2,3],[3,2]],
@@ -390,35 +432,123 @@
 
       /* ---------- VexFlow drawing ---------- */
       function drawNotation(barTick) {
-        notationDiv.innerHTML = '';
-        const VF = Vex.Flow;
-        const vf = new VF.Factory({ renderer: { elementId: 'notation', width: 420, height: 120 } });
-        const context = vf.getContext();
-        const stave = new VF.Stave(10, 40, 400);
-        stave.addClef('percussion').addTimeSignature(tsSel.value);
-        stave.setContext(context).draw();
-
-        const durMap = { 1: 'q', 2: '8', 3: '8', 4: '16', 5: '16' };
-        const dur = durMap[currentSubdivision] || 'q';
-        const total = currentMeter * currentSubdivision;
-        const notes = [];
-        for (let i = 0; i < total; i++) {
-          const note = new VF.StaveNote({ keys: ['b/4'], duration: dur });
-          if (i === barTick) note.setStyle({ fillStyle: 'red', strokeStyle: 'red' });
-          notes.push(note);
-        }
-        const voice = new VF.Voice({ num_beats: total, beat_value: 4 * currentSubdivision })
-          .addTickables(notes);
-
-        new VF.Formatter().joinVoices([voice]).format([voice], 380);
-        voice.draw(context, stave);
-
-        if (polyEnableChk.checked) {
-          const num = parseInt(polyCountInput.value, 10);
-          crossPositions = [];
-          for (let i = 0; i < num; i++) {
-            crossPositions.push(Math.round((i * total) / num));
+        try {
+          // Initialize or reinitialize if state changed
+          if (!vfFactory || hasNotationStateChanged()) {
+            clearNotation();
+            initNotation();
+            lastNotationState = getNotationState();
           }
+
+          const VF = Vex.Flow;
+          const context = vfContext;
+          
+          // Clear previous drawing
+          context.clear();
+          
+          const stave = new VF.Stave(10, 40, 400);
+          stave.addClef('percussion').addTimeSignature(tsSel.value);
+          stave.setContext(context).draw();
+
+          // Map subdivisions to note durations and create groups
+          const durMap = {
+            1: { duration: 'q', groupSize: 1 },  // quarter notes
+            2: { duration: '8', groupSize: 2 },  // eighth notes
+            3: { duration: '8', groupSize: 3 },  // triplets
+            4: { duration: '16', groupSize: 4 }, // sixteenth notes
+            5: { duration: '16', groupSize: 5 }  // quintuplets
+          };
+          const { duration, groupSize } = durMap[currentSubdivision] || { duration: 'q', groupSize: 1 };
+          const total = currentMeter * currentSubdivision;
+          
+          // Create notes with proper styling
+          const notes = [];
+          for (let i = 0; i < total; i++) {
+            const note = new VF.StaveNote({ 
+              keys: ['b/4'], 
+              duration: duration + (i === barTick ? '' : 'r') // Use rests for non-current beats
+            });
+            
+            // Add styling for the current beat
+            if (i === barTick) {
+              note.setStyle({ fillStyle: 'red', strokeStyle: 'red' });
+            }
+            
+            // Add dots for compound meters (6/8, 9/8, 12/8)
+            if (tsSel.value.endsWith('/8') && duration === 'q') {
+              note.addDot(0);
+            }
+            
+            notes.push(note);
+          }
+
+          // Create beams for grouped notes
+          const beams = [];
+          if (groupSize > 1) {
+            for (let i = 0; i < notes.length; i += groupSize) {
+              const group = notes.slice(i, i + groupSize);
+              if (group.length > 1) {
+                if (groupSize === 3) {
+                  // Create tuplets for triplets
+                  const tuplet = new VF.Tuplet(group);
+                  beams.push(tuplet);
+                } else {
+                  // Create regular beams for other groupings
+                  const beam = new VF.Beam(group);
+                  beams.push(beam);
+                }
+              }
+            }
+          }
+
+          // Create voice with proper timing
+          let voice;
+          if (tsSel.value.endsWith('/8')) {
+            // Compound meter (6/8, 9/8, 12/8)
+            voice = new VF.Voice({ num_beats: currentMeter/3, beat_value: 4 })
+              .addTickables(notes);
+          } else {
+            // Simple meter
+            voice = new VF.Voice({ num_beats: currentMeter, beat_value: 4 })
+              .addTickables(notes);
+          }
+
+          // Format and draw
+          new VF.Formatter()
+            .joinVoices([voice])
+            .format([voice], 380);
+          
+          voice.draw(context, stave);
+          beams.forEach(b => b.setContext(context).draw());
+
+          // Draw polyrhythm markers if enabled
+          if (polyEnableChk.checked) {
+            const num = parseInt(polyCountInput.value, 10);
+            crossPositions = [];
+            for (let i = 0; i < num; i++) {
+              crossPositions.push(Math.round((i * total) / num));
+            }
+            
+            // Add polyrhythm markers using VexFlow annotations
+            const markerNotes = notes.filter((_, i) => crossPositions.includes(i));
+            markerNotes.forEach(note => {
+              note.addModifier(new VF.Annotation('×')
+                .setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM)
+                .setFont('Arial', 12, 'bold'));
+            });
+          }
+        } catch (err) {
+          console.error('Failed to draw notation:', err);
+          // Fallback to simpler visualization if VexFlow fails
+          clearNotation();
+          const div = document.createElement('div');
+          div.style.width = '100%';
+          div.style.height = '100%';
+          div.style.display = 'flex';
+          div.style.alignItems = 'center';
+          div.style.justifyContent = 'center';
+          div.textContent = `Beat ${barTick + 1} of ${currentMeter * currentSubdivision}`;
+          notationDiv.appendChild(div);
         }
       }
 
@@ -720,6 +850,9 @@
           audioCtx = null;
           noiseBuf = null;
         }
+
+        // Clean up notation
+        clearNotation();
       }
 
       /* ---------- Tap tempo ---------- */
