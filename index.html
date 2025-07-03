@@ -196,6 +196,15 @@
       </div>
     </fieldset>
 
+    <fieldset class="section">
+      <legend>Measure Tones</legend>
+      <div class="group">
+        <label for="measureCount">Measures:</label>
+        <input type="number" id="measureCount" min="1" value="1" aria-label="Number of practice measures">
+      </div>
+      <div id="measureTones" class="group"></div>
+    </fieldset>
+
     <!-- New Polyrhythm Section -->
     <fieldset class="section">
       <legend>Polyrhythm</legend>
@@ -280,6 +289,8 @@
             addChangeBtn = $('addChange');
       const playMeasuresInput = $('playMeasures'),
             muteMeasuresInput = $('muteMeasures');
+      const measureCountInput = $('measureCount'),
+            measureTonesDiv = $('measureTones');
       const saveBtn = $('savePreset'),
             loadBtn = $('loadPreset'),
             deleteBtn = $('deletePreset'),
@@ -298,6 +309,7 @@
       let currentBpm = +bpmInput.value,
           currentMeter, currentSubdivision = +subdivisionSel.value;
       let accentBoxes = [], accentToneBoxes = [], taps = [], tempoChanges = [];
+      let measureToneSelects = [];
       let polyAcc = 0;
       let startTime = 0; // Track start time for drift correction
 
@@ -395,6 +407,20 @@
           accentCont.appendChild(lbl);
           accentBoxes.push(cb); accentToneBoxes.push(toneSel);
         });
+      }
+
+      function renderMeasureToneControls() {
+        const count = Math.max(1, parseInt(measureCountInput.value, 10) || 1);
+        measureTonesDiv.innerHTML = '';
+        measureToneSelects = [];
+        for (let i = 0; i < count; i++) {
+          const lbl = document.createElement('label');
+          lbl.textContent = `M${i + 1}`;
+          const sel = cloneToneSelect();
+          lbl.appendChild(sel);
+          measureTonesDiv.appendChild(lbl);
+          measureToneSelects.push(sel);
+        }
       }
 
       /* ---------- Tempo-change table ---------- */
@@ -781,10 +807,11 @@
         if (!measureMuted) {
           const accent = accentBoxes[beatIdx]?.checked ?? false;
           const tone = accentToneBoxes[beatIdx]?.value || accentToneSel.value;
+          const measureTone = measureToneSelects[(measureCount - 1) % measureToneSelects.length]?.value || toneSel.value;
           if (!audioCtx) initAudio();
           if (isMain) {
             playTone(
-              accent ? tone : toneSel.value,
+              accent ? tone : measureTone,
               accent ? +accentVolCtrl.value : +volCtrl.value
             );
           } else {
@@ -919,6 +946,8 @@
             tempoChanges,
             playMeasures: +playMeasuresInput.value,
             muteMeasures: +muteMeasuresInput.value,
+            measureCount: +measureCountInput.value,
+            measureTones: measureToneSelects.map(sel => sel.value),
             polyCount: +polyCountInput.value,
             polyTone: polyToneSel.value,
             polyVolume: +polyVolCtrl.value,
@@ -956,7 +985,15 @@
           tempoChanges = Array.isArray(p.tempoChanges) ? p.tempoChanges : [];
           playMeasuresInput.value = Math.max(0, parseInt(p.playMeasures) || 0);
           muteMeasuresInput.value = Math.max(0, parseInt(p.muteMeasures) || 0);
-          
+
+          measureCountInput.value = Math.max(1, parseInt(p.measureCount) || 1);
+          renderMeasureToneControls();
+          if (Array.isArray(p.measureTones)) {
+            p.measureTones.forEach((t, i) => {
+              if (measureToneSelects[i]) measureToneSelects[i].value = t;
+            });
+          }
+
           // Polyrhythm settings
           polyCountInput.value = Math.max(1, parseInt(p.polyCount) || 3);
           polyToneSel.value = p.polyTone || 'click';
@@ -1068,9 +1105,16 @@
       
       groupingSel.onchange = updateAccentPattern;
 
+      measureCountInput.onchange = () => {
+        const val = +measureCountInput.value;
+        measureCountInput.value = Math.max(1, val);
+        renderMeasureToneControls();
+      };
+
       /* ---------- Init ---------- */
       initAudio();
       loadPresets();
+      renderMeasureToneControls();
       tsSel.dispatchEvent(new Event('change'));
     });
   </script>
