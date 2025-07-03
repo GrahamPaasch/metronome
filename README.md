@@ -7,6 +7,11 @@ An alternative version built with [Vue 3](https://vuejs.org/) is available in
 extra features like swing feel, polymeter, polyrhythm and programmable tone
 drones.
 
+The HTML metronome now includes a "Measure Pitches" section where you can select
+how many measures to cycle through and assign a reference pitch for each
+measure. The metronome hums the chosen note for the duration of its measure to
+help with intonation practice.
+
 The project also contains a small proof-of-concept for notation rendering under `notation_feature/demo.html` using VexFlow.
 
 For details about the internal agents that drive the metronome (tempo, audio, visuals, input, persistence, and logging), see [AGENTS.md](AGENTS.md).

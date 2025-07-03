@@ -196,6 +196,17 @@
       </div>
     </fieldset>
 
+    <fieldset class="section">
+      <legend>Measure Pitches</legend>
+      <div class="group">
+        <label for="measureCount">Measures:</label>
+        <input type="number" id="measureCount" min="1" value="1" aria-label="Number of practice measures">
+        <label for="humVolume">Hum Volume:</label>
+        <input type="range" id="humVolume" min="0" max="1" step="0.01" value="0.3" aria-label="Hum volume">
+      </div>
+      <div id="measurePitches" class="group"></div>
+    </fieldset>
+
     <!-- New Polyrhythm Section -->
     <fieldset class="section">
       <legend>Polyrhythm</legend>
@@ -280,6 +291,9 @@
             addChangeBtn = $('addChange');
       const playMeasuresInput = $('playMeasures'),
             muteMeasuresInput = $('muteMeasures');
+      const measureCountInput = $('measureCount'),
+            humVolCtrl = $('humVolume'),
+            measurePitchesDiv = $('measurePitches');
       const saveBtn = $('savePreset'),
             loadBtn = $('loadPreset'),
             deleteBtn = $('deletePreset'),
@@ -298,6 +312,7 @@
       let currentBpm = +bpmInput.value,
           currentMeter, currentSubdivision = +subdivisionSel.value;
       let accentBoxes = [], accentToneBoxes = [], taps = [], tempoChanges = [];
+      let measurePitchSelects = [];
       let polyAcc = 0;
       let startTime = 0; // Track start time for drift correction
 
@@ -376,6 +391,12 @@
         sel.value = accentToneSel.value;
         return sel;
       }
+      function clonePitchSelect() {
+        const sel = document.createElement('select');
+        const notes = ['C4','C#4','D4','D#4','E4','F4','F#4','G4','G#4','A4','A#4','B4','C5'];
+        notes.forEach(n => sel.appendChild(new Option(n, n)));
+        return sel;
+      }
       function updateAccentPattern() {
         accentCont.innerHTML = ''; accentBoxes = []; accentToneBoxes = [];
         const beats = currentMeter;
@@ -395,6 +416,20 @@
           accentCont.appendChild(lbl);
           accentBoxes.push(cb); accentToneBoxes.push(toneSel);
         });
+      }
+
+      function renderMeasurePitchControls() {
+        const count = Math.max(1, parseInt(measureCountInput.value, 10) || 1);
+        measurePitchesDiv.innerHTML = '';
+        measurePitchSelects = [];
+        for (let i = 0; i < count; i++) {
+          const lbl = document.createElement('label');
+          lbl.textContent = `M${i + 1}`;
+          const sel = clonePitchSelect();
+          lbl.appendChild(sel);
+          measurePitchesDiv.appendChild(lbl);
+          measurePitchSelects.push(sel);
+        }
       }
 
       /* ---------- Tempo-change table ---------- */
@@ -692,8 +727,55 @@
         gain.gain.setValueAtTime(0, when); gain.gain.linearRampToValueAtTime(vol, when + 0.001);
         gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.03);
         osc.start(when); osc.stop(when + 0.03);
-        
+
         return { osc, gain, filt };
+      }
+
+      function noteToFreq(note) {
+        const map = { C:0, D:2, E:4, F:5, G:7, A:9, B:11 };
+        const m = note.match(/^([A-G])(#?)(\d)$/);
+        if (!m) return 440;
+        const [ , l, sharp, oct ] = m;
+        const n = (parseInt(oct,10)+1)*12 + map[l] + (sharp ? 1:0);
+        return 440 * Math.pow(2, (n-69)/12);
+      }
+
+      let currentHum = null;
+      function startHum(note) {
+        stopHum();
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(noteToFreq(note), audioCtx.currentTime);
+        gain.gain.setValueAtTime(0, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(+humVolCtrl.value, audioCtx.currentTime + 0.05);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start();
+        currentHum = {osc, gain};
+      }
+      function stopHum() {
+        if (!currentHum) return;
+        const now = audioCtx.currentTime;
+        currentHum.gain.gain.setValueAtTime(currentHum.gain.gain.value, now);
+        currentHum.gain.gain.linearRampToValueAtTime(0.0001, now + 0.05);
+        currentHum.osc.stop(now + 0.05);
+        setTimeout(() => {
+          currentHum.osc.disconnect();
+          currentHum.gain.disconnect();
+        }, 100);
+        currentHum = null;
+      }
+
+      function isMeasureMuted(num) {
+        const playM = +playMeasuresInput.value;
+        const muteM = +muteMeasuresInput.value;
+        if (playM > 0 && muteM >= 0) {
+          const cycleLen = playM + muteM;
+          const idx = (num - 1) % cycleLen;
+          return idx >= playM;
+        }
+        return false;
       }
       /* ---------- Scheduler ---------- */
       function doTick() {
@@ -725,14 +807,7 @@
         }
 
         /* ----- measure loop ----- */
-        const playM = +playMeasuresInput.value;
-        const muteM = +muteMeasuresInput.value;
-        let measureMuted = false;
-        if (playM > 0 && muteM >= 0) {
-          const cycleLen = playM + muteM;
-          const idx = (measureCount - 1) % cycleLen;
-          if (idx >= playM) measureMuted = true;
-        }
+        const measureMuted = isMeasureMuted(measureCount);
 
         /* ----- tempo-changes ----- */
         let tempoChangeApplied = false;
@@ -816,6 +891,12 @@
           measureCount++;
           const now = audioCtx.currentTime;
           schedulePolyBeats(now);
+          if (!isMeasureMuted(measureCount)) {
+            const pitch = measurePitchSelects[(measureCount - 1) % measurePitchSelects.length]?.value || 'C4';
+            startHum(pitch);
+          } else {
+            stopHum();
+          }
         }
         
         timerId = setTimeout(doTick, interval);
@@ -839,6 +920,10 @@
           
           startTime = Date.now(); // Initialize start time
           schedulePolyBeats(audioCtx.currentTime);
+          if (!isMeasureMuted(1)) {
+            const pitch = measurePitchSelects[0]?.value || 'C4';
+            startHum(pitch);
+          }
           startBtn.disabled = true; stopBtn.disabled = false;
           doTick();
           if (DEBUG) console.log('Metronome started', { currentBpm, currentMeter, currentSubdivision });
@@ -864,12 +949,12 @@
             }
           });
           scheduledPolyBeats = [];
-          
+          stopHum();
+
           audioCtx.close();
           audioCtx = null;
           noiseBuf = null;
         }
-
         // Clean up notation
         clearNotation();
       }
@@ -919,6 +1004,9 @@
             tempoChanges,
             playMeasures: +playMeasuresInput.value,
             muteMeasures: +muteMeasuresInput.value,
+            measureCount: +measureCountInput.value,
+            measurePitches: measurePitchSelects.map(sel => sel.value),
+            humVolume: humVolCtrl.value,
             polyCount: +polyCountInput.value,
             polyTone: polyToneSel.value,
             polyVolume: +polyVolCtrl.value,
@@ -953,10 +1041,19 @@
           accentVolCtrl.value = Math.min(Math.max(0, parseFloat(p.accentVolume) || 1), 1);
           subToneSel.value = p.subdivisionTone || 'click';
           subVolCtrl.value = Math.min(Math.max(0, parseFloat(p.subdivisionVolume) || 0.6), 1);
+          humVolCtrl.value = Math.min(Math.max(0, parseFloat(p.humVolume) || 0.3), 1);
           tempoChanges = Array.isArray(p.tempoChanges) ? p.tempoChanges : [];
           playMeasuresInput.value = Math.max(0, parseInt(p.playMeasures) || 0);
           muteMeasuresInput.value = Math.max(0, parseInt(p.muteMeasures) || 0);
-          
+
+          measureCountInput.value = Math.max(1, parseInt(p.measureCount) || 1);
+          renderMeasurePitchControls();
+          if (Array.isArray(p.measurePitches)) {
+            p.measurePitches.forEach((t, i) => {
+              if (measurePitchSelects[i]) measurePitchSelects[i].value = t;
+            });
+          }
+
           // Polyrhythm settings
           polyCountInput.value = Math.max(1, parseInt(p.polyCount) || 3);
           polyToneSel.value = p.polyTone || 'click';
@@ -1068,9 +1165,16 @@
       
       groupingSel.onchange = updateAccentPattern;
 
+      measureCountInput.onchange = () => {
+        const val = +measureCountInput.value;
+        measureCountInput.value = Math.max(1, val);
+        renderMeasurePitchControls();
+      };
+
       /* ---------- Init ---------- */
       initAudio();
       loadPresets();
+      renderMeasurePitchControls();
       tsSel.dispatchEvent(new Event('change'));
     });
   </script>
