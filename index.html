@@ -856,10 +856,11 @@
         if (!measureMuted) {
           const accent = accentBoxes[beatIdx]?.checked ?? false;
           const tone = accentToneBoxes[beatIdx]?.value || accentToneSel.value;
+          const measureTone = measureToneSelects[(measureCount - 1) % measureToneSelects.length]?.value || toneSel.value;
           if (!audioCtx) initAudio();
           if (isMain) {
             playTone(
-              accent ? tone : toneSel.value,
+              accent ? tone : measureTone,
               accent ? +accentVolCtrl.value : +volCtrl.value
             );
           } else {
