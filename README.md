@@ -1,18 +1,19 @@
 # Browser Metronome
 
-This repository hosts a simple metronome implemented in HTML and JavaScript. Open `index.html` in a modern browser to experiment with tempo, subdivisions, and accent patterns.
+This repository hosts a minimal metronome implemented in plain HTML and JavaScript.
+Open `index.html` in a modern browser to start using it.  Enter a tempo in beats
+per minute and press **Start** to hear and see the clicks.
 
-An alternative version built with [Vue 3](https://vuejs.org/) is available in
-`vue-metronome.html`. It demonstrates modern framework integration along with
-extra features like swing feel, polymeter, polyrhythm and programmable tone
-drones.
+The implementation is intentionally simple and is composed of small "agents" that
+handle specific responsibilities:
 
-The HTML metronome now includes a "Measure Pitches" section where you can select
-how many measures to cycle through and assign a reference pitch for each
-measure. The metronome hums the chosen note for the duration of its measure to
-help with intonation practice.
+* **TempoAgent** – emits `beat` and `subbeat` events at the configured BPM.
+* **AudioAgent** – produces click sounds using the Web Audio API.
+* **VisualAgent** – flashes a DOM element on beats and subdivisions.
+* **InputAgent** – wires up the UI controls and broadcasts user actions.
 
-The project also contains a small proof-of-concept for notation rendering under `notation_feature/demo.html` using VexFlow.
+These agents demonstrate how the application could be extended or replaced with
+more sophisticated components.  For more background see
+[AGENTS.md](AGENTS.md).
 
-For details about the internal agents that drive the metronome (tempo, audio, visuals, input, persistence, and logging), see [AGENTS.md](AGENTS.md).
-
+An experimental Vue 3 version remains available in `vue-metronome.html`.
