@@ -756,14 +756,26 @@
         currentHum = {osc, gain};
       }
       function stopHum() {
-        if (!currentHum) return;
-        const now = audioCtx.currentTime;
-        currentHum.gain.gain.setValueAtTime(currentHum.gain.gain.value, now);
-        currentHum.gain.gain.linearRampToValueAtTime(0.0001, now + 0.05);
-        currentHum.osc.stop(now + 0.05);
-        setTimeout(() => {
-          currentHum.osc.disconnect();
-          currentHum.gain.disconnect();
+          if (!currentHum) return;
+          const hum = currentHum;
+          currentHum = null;
+          const now = audioCtx.currentTime;
+          try {
+            hum.gain.gain.setValueAtTime(hum.gain.gain.value, now);
+            hum.gain.gain.linearRampToValueAtTime(0.0001, now + 0.05);
+            hum.osc.stop(now + 0.05);
+          } catch (e) {
+            console.error('Error stopping hum oscillator:', e);
+          }
+          setTimeout(() => {
+            try {
+              if (hum.osc) hum.osc.disconnect();
+              if (hum.gain) hum.gain.disconnect();
+            } catch (err) {
+              console.error('Error cleaning up hum nodes:', err);
+            }
+          }, 100);
+        
         }, 100);
         currentHum = null;
       }
@@ -857,7 +869,7 @@
         if (!measureMuted) {
           const accent = accentBoxes[beatIdx]?.checked ?? false;
           const tone = accentToneBoxes[beatIdx]?.value || accentToneSel.value;
-          const measureTone = measureToneSelects[(measureCount - 1) % measureToneSelects.length]?.value || toneSel.value;
+          const measureTone = measurePitchSelects[(measureCount - 1) % measurePitchSelects.length]?.value || toneSel.value;
           if (!audioCtx) initAudio();
           if (isMain) {
             playTone(
