@@ -756,7 +756,6 @@
         currentHum = {osc, gain};
       }
       function stopHum() {
-
           if (!currentHum) return;
           const hum = currentHum;
           currentHum = null;
@@ -868,14 +867,10 @@
         /* ----- play sound ----- */
         if (!measureMuted) {
           const accent = accentBoxes[beatIdx]?.checked ?? false;
-          const tone = accentToneBoxes[beatIdx]?.value || accentToneSel.value;
-          const measureTone = measurePitchSelects[(measureCount - 1) % measurePitchSelects.length]?.value || toneSel.value;
+          const selectedTone = accent ? (accentToneBoxes[beatIdx]?.value || accentToneSel.value) : toneSel.value;
           if (!audioCtx) initAudio();
           if (isMain) {
-            playTone(
-              accent ? tone : measureTone,
-              accent ? +accentVolCtrl.value : +volCtrl.value
-            );
+            playTone(selectedTone, accent ? +accentVolCtrl.value : +volCtrl.value);
           } else {
             playTone(subToneSel.value, +subVolCtrl.value);
           }
