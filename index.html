@@ -775,11 +775,9 @@
               console.error('Error cleaning up hum nodes:', err);
             }
           }, 100);
-        }, 100);
-        currentHum = null;
-      }
+        }
 
-      function isMeasureMuted(num) {
+        function isMeasureMuted(num) {
         const playM = +playMeasuresInput.value;
         const muteM = +muteMeasuresInput.value;
         if (playM > 0 && muteM >= 0) {
