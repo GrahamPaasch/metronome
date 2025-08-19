@@ -756,6 +756,7 @@
         currentHum = {osc, gain};
       }
       function stopHum() {
+
           if (!currentHum) return;
           const hum = currentHum;
           currentHum = null;
@@ -775,7 +776,6 @@
               console.error('Error cleaning up hum nodes:', err);
             }
           }, 100);
-        
         }, 100);
         currentHum = null;
       }
