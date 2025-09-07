@@ -53,6 +53,8 @@
     #accentPattern select { margin-left:0.25rem; }
     .beat-flash { animation: flash 0.1s ease-out; }
     .sub-flash { animation: subFlash 0.1s ease-out; }
+    body.hc .beat-flash { animation: flashHC 0.1s ease-out; }
+    body.hc .sub-flash { animation: subFlashHC 0.1s ease-out; }
     @keyframes flash {
       0% { background: #4CAF50; }
       100% { background: none; }
@@ -60,6 +62,14 @@
     @keyframes subFlash {
       0% { background: #90CAF9; }
       100% { background: none; }
+    }
+    @keyframes flashHC {
+      0% { background: #000; color: #fff; }
+      100% { background: none; color: inherit; }
+    }
+    @keyframes subFlashHC {
+      0% { background: #0000FF; color: #fff; }
+      100% { background: none; color: inherit; }
     }
   </style>
 </head>
@@ -104,6 +114,10 @@
         <label>Grouping Pattern:</label>
         <select id="grouping" aria-label="Accent grouping pattern"><option value="">—Manual—</option></select>
         <div id="accentPattern"></div>
+      </div>
+      <div class="group">
+        <label for="retainAccents">Retain accents on meter change</label>
+        <input type="checkbox" id="retainAccents" aria-label="Retain accents on meter change">
       </div>
       <div class="group">
         <label>Default Accent Tone:</label>
@@ -193,6 +207,8 @@
         <input type="number" id="playMeasures" min="0" value="0" aria-label="Number of measures to play">
         <label for="muteMeasures">Mute Measures:</label>
         <input type="number" id="muteMeasures" min="0" value="0" aria-label="Number of measures to mute">
+        <label for="checkpointBeep">Checkpoint beep on unmute</label>
+        <input type="checkbox" id="checkpointBeep" checked aria-label="Checkpoint beep on unmute">
       </div>
     </fieldset>
 
@@ -205,6 +221,14 @@
         <input type="range" id="humVolume" min="0" max="1" step="0.01" value="0" aria-label="Hum volume">
       </div>
       <div id="measurePitches" class="group"></div>
+    </fieldset>
+
+    <fieldset class="section">
+      <legend>Display</legend>
+      <div class="group">
+        <label for="highContrast">High Contrast Visuals</label>
+        <input type="checkbox" id="highContrast" aria-label="High contrast visuals">
+      </div>
     </fieldset>
 
     <!-- New Polyrhythm Section -->
@@ -291,6 +315,8 @@
             addChangeBtn = $('addChange');
       const playMeasuresInput = $('playMeasures'),
             muteMeasuresInput = $('muteMeasures');
+      const retainAccentsChk = $('retainAccents');
+      const checkpointBeepChk = $('checkpointBeep');
       const measureCountInput = $('measureCount'),
             humVolCtrl = $('humVolume'),
             measurePitchesDiv = $('measurePitches');
@@ -300,6 +326,7 @@
             presetList = $('presetList'),
             presetName = $('presetName');
       const notationDiv = $('notation');
+      const highContrastChk = $('highContrast');
       // Polyrhythm refs
       const polyCountInput = $('polyCount');
       const polyToneSel = $('polyTone');
@@ -367,7 +394,10 @@
         5: [[2,3],[3,2]],
         7: [[2,2,3],[2,3,2],[3,2,2]],
         11: [[3,3,3,2],[3,3,2,3],[3,2,3,3],[2,3,3,3]],
-        13: [[3,3,3,2,2],[3,3,2,3,2],[3,2,3,3,2],[2,3,3,3,2]]
+        13: [[3,3,3,2,2],[3,3,2,3,2],[3,2,3,3,2],[2,3,3,3,2]],
+        6: [[3,3]],
+        9: [[3,3,3],[2,2,2,3]],
+        12: [[3,3,3,3]]
       };
       function updateGroupingOpts() {
         const prev = groupingSel.value;
@@ -376,11 +406,35 @@
         (groupingOpts[num] || []).forEach(g => {
           const opt = document.createElement('option');
           opt.value = g.join(',');
-          opt.textContent = g.join(' + ');
+          let label = g.join(' + ');
+          if (num === 6 && g.join(',') === '3,3') label += ' (duple)';
+          if (num === 9 && g.join(',') === '3,3,3') label += ' (triple)';
+          if (num === 12 && g.join(',') === '3,3,3,3') label += ' (quadruple)';
+          opt.textContent = label;
           groupingSel.appendChild(opt);
         });
         if (prev && [...groupingSel.options].some(o => o.value === prev))
           groupingSel.value = prev;
+      }
+      function getAccentState() {
+        return {
+          checked: accentBoxes.map(cb => cb.checked),
+          tones: accentToneBoxes.map(sel => sel.value)
+        };
+      }
+      function applyAccentState(state) {
+        if (!state) return;
+        const len = Math.min(state.checked.length, accentBoxes.length);
+        for (let i = 0; i < len; i++) {
+          accentBoxes[i].checked = !!state.checked[i];
+          accentToneBoxes[i].value = state.tones[i] || accentToneSel.value;
+        }
+      }
+      function rebuildAccentsPreservingState() {
+        const state = retainAccentsChk.checked ? getAccentState() : null;
+        updateGroupingOpts();
+        updateAccentPattern();
+        if (state) applyAccentState(state);
       }
       function cloneToneSelect() {
         const sel = document.createElement('select');
@@ -743,17 +797,39 @@
 
       let currentHum = null;
       function startHum(note) {
-        stopHum();
         initAudio();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(noteToFreq(note), audioCtx.currentTime);
-        gain.gain.setValueAtTime(0, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(+humVolCtrl.value, audioCtx.currentTime + 0.05);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start();
-        currentHum = {osc, gain};
+        const targetVol = +humVolCtrl.value;
+        const now = audioCtx.currentTime;
+        const fade = 0.08;
+        const freq = noteToFreq(note);
+        const createHum = (when) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, when);
+          gain.gain.setValueAtTime(0, when);
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          osc.start(when);
+          gain.gain.linearRampToValueAtTime(targetVol, when + fade);
+          return { osc, gain };
+        };
+        if (currentHum) {
+          const old = currentHum;
+          const newHum = createHum(now);
+          currentHum = newHum;
+          try {
+            old.gain.gain.setValueAtTime(old.gain.gain.value, now);
+            old.gain.gain.linearRampToValueAtTime(0.0001, now + fade);
+            old.osc.stop(now + fade);
+          } catch (e) {
+            console.error('Error crossfading hum:', e);
+          }
+          setTimeout(() => {
+            try { old.osc.disconnect(); old.gain.disconnect(); } catch {}
+          }, Math.ceil((fade + 0.05) * 1000));
+        } else {
+          currentHum = createHum(now);
+        }
       }
       function stopHum() {
           if (!currentHum) return;
@@ -832,7 +908,7 @@
             if (r.newMeter) {
               currentMeter = parseInt(r.newMeter.split('/')[0], 10);
               tsSel.value = r.newMeter;
-              updateGroupingOpts(); updateAccentPattern();
+              rebuildAccentsPreservingState();
             }
             ticksInMeasure = 0;
             r._applied = true;
@@ -853,7 +929,7 @@
               if (r.newMeter && ratio >= 1 && !r._meterChanged) {
                 currentMeter = parseInt(r.newMeter.split('/')[0], 10);
                 tsSel.value = r.newMeter;
-                updateGroupingOpts(); updateAccentPattern();
+                rebuildAccentsPreservingState();
                 r._meterChanged = true;
                 ticksInMeasure = 0;
                 tempoChangeApplied = true;
@@ -893,6 +969,7 @@
 
         /* ----- update notation & counters ----- */
         drawNotation(ticksInMeasure);
+        const prevMeasureMuted = measureMuted;
         ticks++; ticksInMeasure++;
 
         // Reset on new measure
@@ -901,11 +978,15 @@
           measureCount++;
           const now = audioCtx.currentTime;
           schedulePolyBeats(now);
-          if (!isMeasureMuted(measureCount)) {
+          const nowMuted = isMeasureMuted(measureCount);
+          if (!nowMuted) {
             const pitch = measurePitchSelects[(measureCount - 1) % measurePitchSelects.length]?.value || 'C4';
             startHum(pitch);
           } else {
             stopHum();
+          }
+          if (checkpointBeepChk.checked && prevMeasureMuted && !nowMuted) {
+            playTone('bell', Math.min(1, (+accentVolCtrl.value || +volCtrl.value)));
           }
         }
         
@@ -1022,7 +1103,10 @@
             polyCount: +polyCountInput.value,
             polyTone: polyToneSel.value,
             polyVolume: +polyVolCtrl.value,
-            polyEnable: polyEnableChk.checked
+            polyEnable: polyEnableChk.checked,
+            retainAccents: !!retainAccentsChk.checked,
+            checkpointBeep: !!checkpointBeepChk.checked,
+            highContrast: !!highContrastChk.checked
           };
           localStorage.setItem('metronomePresets', JSON.stringify(store));
           loadPresets();
@@ -1078,6 +1162,10 @@
           polyToneSel.value = p.polyTone || 'click';
           polyVolCtrl.value = Math.min(Math.max(0, parseFloat(p.polyVolume) || 1), 1);
           polyEnableChk.checked = !!p.polyEnable;
+          retainAccentsChk.checked = !!p.retainAccents;
+          checkpointBeepChk.checked = p.checkpointBeep === undefined ? true : !!p.checkpointBeep;
+          highContrastChk.checked = !!p.highContrast;
+          document.body.classList.toggle('hc', highContrastChk.checked);
           
           updateGroupingOpts(); 
           updateAccentPattern(); 
@@ -1175,7 +1263,8 @@
 
       tsSel.onchange = () => {
         currentMeter = parseInt(tsSel.value.split('/')[0], 10);
-        updateGroupingOpts(); updateAccentPattern(); drawNotation(0);
+        rebuildAccentsPreservingState();
+        drawNotation(0);
       };
       
       subdivisionSel.onchange = () => {
