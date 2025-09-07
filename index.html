@@ -202,7 +202,7 @@
         <label for="measureCount">Measures:</label>
         <input type="number" id="measureCount" min="1" value="1" aria-label="Number of practice measures">
         <label for="humVolume">Hum Volume:</label>
-        <input type="range" id="humVolume" min="0" max="1" step="0.01" value="0.3" aria-label="Hum volume">
+        <input type="range" id="humVolume" min="0" max="1" step="0.01" value="0" aria-label="Hum volume">
       </div>
       <div id="measurePitches" class="group"></div>
     </fieldset>
@@ -920,7 +920,9 @@
           tempoChanges.forEach(r => { r._inProgress = r._meterChanged = r._applied = false; });
           currentBpm = +bpmInput.value; currentSubdivision = +subdivisionSel.value;
           currentMeter = parseInt(tsSel.value.split('/')[0], 10);
-          updateGroupingOpts(); updateAccentPattern(); drawNotation(0);
+          // Keep existing accent settings intact when starting
+          updateGroupingOpts();
+          drawNotation(0);
           initAudio();
           
           // Resume audio context if suspended
@@ -1051,7 +1053,14 @@
           accentVolCtrl.value = Math.min(Math.max(0, parseFloat(p.accentVolume) || 1), 1);
           subToneSel.value = p.subdivisionTone || 'click';
           subVolCtrl.value = Math.min(Math.max(0, parseFloat(p.subdivisionVolume) || 0.6), 1);
-          humVolCtrl.value = Math.min(Math.max(0, parseFloat(p.humVolume) || 0.3), 1);
+          // Respect explicit 0 and default to 0 if unset
+          humVolCtrl.value = Math.min(
+            Math.max(
+              0,
+              (p.humVolume !== undefined && p.humVolume !== null && p.humVolume !== '') ? parseFloat(p.humVolume) : 0
+            ),
+            1
+          );
           tempoChanges = Array.isArray(p.tempoChanges) ? p.tempoChanges : [];
           playMeasuresInput.value = Math.max(0, parseInt(p.playMeasures) || 0);
           muteMeasuresInput.value = Math.max(0, parseInt(p.muteMeasures) || 0);
