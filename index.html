@@ -106,6 +106,16 @@
           <option value="5">Quintuplet</option>
         </select>
       </div>
+      <div class="group">
+        <label for="swingType">Swing:</label>
+        <select id="swingType" aria-label="Swing type">
+          <option value="off" selected>Off</option>
+          <option value="8">8ths</option>
+          <option value="16">16ths</option>
+        </select>
+        <label for="swingAmount">Amount:</label>
+        <input type="range" id="swingAmount" min="0" max="1" step="0.01" value="0" aria-label="Swing amount">
+      </div>
     </fieldset>
 
     <fieldset class="section">
@@ -210,6 +220,13 @@
         <label for="checkpointBeep">Checkpoint beep on unmute</label>
         <input type="checkbox" id="checkpointBeep" checked aria-label="Checkpoint beep on unmute">
       </div>
+      <div class="group">
+        <label for="drillEnable">Subdivision Drill:</label>
+        <input type="checkbox" id="drillEnable" aria-label="Enable subdivision drill">
+        <label for="drillMeasures">Measures per step:</label>
+        <input type="number" id="drillMeasures" min="1" value="2" aria-label="Measures per drill step">
+        <span>(cycles 1→2→3→4)</span>
+      </div>
     </fieldset>
 
     <fieldset class="section">
@@ -272,6 +289,20 @@
 
   <div id="notation" style="width:420px;height:120px"></div>
 
+  <fieldset class="section" style="width:100%; max-width:700px; margin-top:1rem;">
+    <legend>Session</legend>
+    <div class="group">
+      <label>Beats:</label>
+      <span id="sessionBeats">0</span>
+      <label>Measures:</label>
+      <span id="sessionMeasures">0</span>
+      <label>Time:</label>
+      <span id="sessionTime">00:00</span>
+      <label>Avg BPM:</label>
+      <span id="sessionAvgBpm">0</span>
+    </div>
+  </fieldset>
+
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const DEBUG = true;
@@ -303,6 +334,8 @@
       const volCtrl = $('volume'),
             accentVolCtrl = $('accentVolume'),
             subVolCtrl = $('subdivisionVolume');
+      const swingTypeSel = $('swingType'),
+            swingAmtCtrl = $('swingAmount');
       const tapBtn = $('tap'),
             startBtn = $('start'),
             stopBtn = $('stop');
@@ -317,6 +350,8 @@
             muteMeasuresInput = $('muteMeasures');
       const retainAccentsChk = $('retainAccents');
       const checkpointBeepChk = $('checkpointBeep');
+      const drillEnableChk = $('drillEnable'),
+            drillMeasuresInput = $('drillMeasures');
       const measureCountInput = $('measureCount'),
             humVolCtrl = $('humVolume'),
             measurePitchesDiv = $('measurePitches');
@@ -344,10 +379,26 @@
       let scheduledPolyBeats = [];
       let startTime = 0; // Track start time for drift correction
 
+      // Drill state
+      const drillCycle = [1,2,3,4];
+      let drillIndex = 0;
+      let drillMeasureCounter = 0;
+
+      // Session summary
+      let sessionStartTime = 0;
+      let sessionBeats = 0;
+      let sessionMeasures = 0;
+
       // === Notation state ===
       let vfFactory = null;
       let vfContext = null;
       let lastNotationState = null;
+
+      // Session UI refs
+      const sessionBeatsEl = $('sessionBeats');
+      const sessionMeasuresEl = $('sessionMeasures');
+      const sessionTimeEl = $('sessionTime');
+      const sessionAvgBpmEl = $('sessionAvgBpm');
 
       function initNotation() {
         if (vfFactory) return;
@@ -661,6 +712,43 @@
         }
       }
 
+      /* ---------- Swing helpers ---------- */
+      function computeSwingFactor(posInBeat) {
+        const type = swingTypeSel.value;
+        const amt = Math.max(0, Math.min(1, parseFloat(swingAmtCtrl.value) || 0));
+        if (type === '8' && currentSubdivision === 2) {
+          // Map 0..1 to 1:1 .. 2:1
+          const r = 1 + amt; // ratio long:short
+          const p = r / (1 + r); // first fraction of the pair
+          return (posInBeat % 2 === 0) ? (2 * p) : (2 * (1 - p));
+        }
+        if (type === '16' && currentSubdivision === 4) {
+          const r = 1 + amt;
+          const p = r / (1 + r);
+          // Pairs: (0,1) and (2,3)
+          return (posInBeat % 2 === 0) ? (2 * p) : (2 * (1 - p));
+        }
+        return 1;
+      }
+
+      /* ---------- Session helpers ---------- */
+      function fmtTime(ms) {
+        const s = Math.floor(ms / 1000);
+        const m = Math.floor(s / 60);
+        const ss = s % 60;
+        return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+      }
+      function updateSessionUI() {
+        if (!sessionStartTime) return;
+        const elapsed = Date.now() - sessionStartTime;
+        sessionBeatsEl.textContent = String(sessionBeats);
+        sessionMeasuresEl.textContent = String(sessionMeasures);
+        sessionTimeEl.textContent = fmtTime(elapsed);
+        const minutes = elapsed / 60000;
+        const avg = minutes > 0 ? Math.round(sessionBeats / minutes) : 0;
+        sessionAvgBpmEl.textContent = String(avg);
+      }
+
       /* ---------- Sound helpers ---------- */
       function playWood(vol) {
         initAudio();
@@ -884,16 +972,20 @@
         }
         const beatIdx = Math.floor(ticksInMeasure / sub);
 
-        // Drift correction
-        const expectedTime = startTime + (ticks * (60 / currentBpm) * 1000 / sub);
+        // Drift correction (base interval before swing)
+        const baseInterval = (60 / currentBpm) * 1000 / sub;
+        const expectedTime = startTime + (ticks * baseInterval);
         const actualTime = Date.now();
         const drift = actualTime - expectedTime;
-        let interval = (60 / currentBpm) * 1000 / sub;
+        let interval = baseInterval;
         
         // Adjust interval to correct for drift
         if (Math.abs(drift) > 1) { // Only correct if drift is more than 1ms
           interval = Math.max(0, interval - drift);
         }
+        // Apply swing after drift compensation (when applicable)
+        const posInBeat = ticks % sub;
+        interval *= computeSwingFactor(posInBeat);
 
         /* ----- measure loop ----- */
         const measureMuted = isMeasureMuted(measureCount);
@@ -948,6 +1040,8 @@
           if (!audioCtx) initAudio();
           if (isMain) {
             playTone(selectedTone, accent ? +accentVolCtrl.value : +volCtrl.value);
+            sessionBeats++;
+            updateSessionUI();
           } else {
             playTone(subToneSel.value, +subVolCtrl.value);
           }
@@ -976,6 +1070,20 @@
         if (ticksInMeasure >= currentMeter * currentSubdivision) {
           ticksInMeasure = 0;
           measureCount++;
+          sessionMeasures++;
+          // Subdivision drill progression
+          if (drillEnableChk.checked) {
+            drillMeasureCounter++;
+            const perStep = Math.max(1, parseInt(drillMeasuresInput.value, 10) || 1);
+            if (drillMeasureCounter >= perStep) {
+              drillMeasureCounter = 0;
+              drillIndex = (drillIndex + 1) % drillCycle.length;
+              const nextSub = drillCycle[drillIndex];
+              currentSubdivision = nextSub;
+              subdivisionSel.value = String(nextSub);
+              drawNotation(0);
+            }
+          }
           const now = audioCtx.currentTime;
           schedulePolyBeats(now);
           const nowMuted = isMeasureMuted(measureCount);
@@ -1012,6 +1120,14 @@
           }
           
           startTime = Date.now(); // Initialize start time
+          // Init session metrics
+          sessionStartTime = startTime;
+          sessionBeats = 0;
+          sessionMeasures = 0;
+          // Init drill
+          drillIndex = drillCycle.indexOf(currentSubdivision);
+          if (drillIndex < 0) drillIndex = 0;
+          drillMeasureCounter = 0;
           schedulePolyBeats(audioCtx.currentTime);
           if (!isMeasureMuted(1)) {
             const pitch = measurePitchSelects[0]?.value || 'C4';
@@ -1094,9 +1210,13 @@
             accentVolume: accentVolCtrl.value,
             subdivisionTone: subToneSel.value,
             subdivisionVolume: subVolCtrl.value,
+            swingType: swingTypeSel.value,
+            swingAmount: swingAmtCtrl.value,
             tempoChanges,
             playMeasures: +playMeasuresInput.value,
             muteMeasures: +muteMeasuresInput.value,
+            drillEnable: !!drillEnableChk.checked,
+            drillMeasures: +drillMeasuresInput.value,
             measureCount: +measureCountInput.value,
             measurePitches: measurePitchSelects.map(sel => sel.value),
             humVolume: humVolCtrl.value,
@@ -1137,6 +1257,8 @@
           accentVolCtrl.value = Math.min(Math.max(0, parseFloat(p.accentVolume) || 1), 1);
           subToneSel.value = p.subdivisionTone || 'click';
           subVolCtrl.value = Math.min(Math.max(0, parseFloat(p.subdivisionVolume) || 0.6), 1);
+          swingTypeSel.value = p.swingType || 'off';
+          swingAmtCtrl.value = Math.min(Math.max(0, parseFloat(p.swingAmount) || 0), 1);
           // Respect explicit 0 and default to 0 if unset
           humVolCtrl.value = Math.min(
             Math.max(
@@ -1148,6 +1270,8 @@
           tempoChanges = Array.isArray(p.tempoChanges) ? p.tempoChanges : [];
           playMeasuresInput.value = Math.max(0, parseInt(p.playMeasures) || 0);
           muteMeasuresInput.value = Math.max(0, parseInt(p.muteMeasures) || 0);
+          drillEnableChk.checked = !!p.drillEnable;
+          drillMeasuresInput.value = Math.max(1, parseInt(p.drillMeasures) || 2);
 
           measureCountInput.value = Math.max(1, parseInt(p.measureCount) || 1);
           renderMeasurePitchControls();
@@ -1270,6 +1394,12 @@
       subdivisionSel.onchange = () => {
         currentSubdivision = +subdivisionSel.value; drawNotation(0);
       };
+      swingTypeSel.onchange = () => {
+        // Swing applies only to matching subdivisions (8ths or 16ths)
+      };
+      swingAmtCtrl.oninput = () => {
+        // Live; nothing to recompute immediately
+      };
       
       groupingSel.onchange = updateAccentPattern;
 
@@ -1277,6 +1407,16 @@
         const val = +measureCountInput.value;
         measureCountInput.value = Math.max(1, val);
         renderMeasurePitchControls();
+      };
+
+      drillMeasuresInput.onchange = () => {
+        const val = +drillMeasuresInput.value;
+        drillMeasuresInput.value = Math.max(1, val);
+      };
+
+      // Display controls
+      highContrastChk.onchange = () => {
+        document.body.classList.toggle('hc', highContrastChk.checked);
       };
 
       /* ---------- Init ---------- */
