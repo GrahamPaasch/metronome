@@ -312,6 +312,7 @@
       /* ---------- Audio ---------- */
       let audioCtx, noiseBuf;
       function initAudio() {
+        // Lazily create the AudioContext on demand (user gesture)
         if (audioCtx) return;
         if (!window.AudioContext && !window.webkitAudioContext) {
           console.error('Web Audio API is not supported in this browser');
@@ -321,6 +322,14 @@
         noiseBuf = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
         const d = noiseBuf.getChannelData(0);
         for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+
+      // Ensure audio is ready and resumed; call from user-driven events and playback helpers
+      async function ensureAudio() {
+        if (!audioCtx) initAudio();
+        if (audioCtx && audioCtx.state === 'suspended') {
+          try { await audioCtx.resume(); } catch (e) { console.error('Failed to resume audio context', e); }
+        }
       }
 
       /* ---------- UI Refs ---------- */
@@ -798,7 +807,8 @@
       function oscType(name) { return name === 'click' ? 'square' : name === 'tick' ? 'sine' : 'triangle'; }
       function oscFreq(name) { return name === 'click' ? 1000 : name === 'tick' ? 600 : 1200; }
       function playTone(name, vol) {
-        initAudio();
+        // Fire-and-forget; startMetronome ensures audio is resumed
+        ensureAudio();
         if (name === 'wood')   return playWood(vol);
         if (name === 'kick')   return playKick(vol);
         if (name === 'snare')  return playSnare(vol);
@@ -860,7 +870,7 @@
         }
       }
       function playToneAtTime(name, vol, when) {
-        initAudio();
+        ensureAudio();
         const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
         let filt;
         if (name === 'click') {
@@ -887,7 +897,7 @@
 
       let currentHum = null;
       function startHum(note) {
-        initAudio();
+        ensureAudio();
         const targetVol = +humVolCtrl.value;
         const now = audioCtx.currentTime;
         const fade = 0.08;
@@ -1114,12 +1124,8 @@
           // Keep existing accent settings intact when starting
           updateGroupingOpts();
           drawNotation(0);
-          initAudio();
-          
-          // Resume audio context if suspended
-          if (audioCtx.state === 'suspended') {
-            await audioCtx.resume();
-          }
+          // Initialize/unlock audio in response to user action
+          await ensureAudio();
           
           startTime = Date.now(); // Initialize start time
           // Init session metrics
@@ -1422,7 +1428,11 @@
       };
 
       /* ---------- Init ---------- */
-      initAudio();
+      // Unlock audio on first user interaction to satisfy autoplay policies
+      const unlock = async () => { await ensureAudio(); };
+      ['pointerdown','touchstart','keydown'].forEach(evt => {
+        window.addEventListener(evt, unlock, { once: true, passive: true });
+      });
       loadPresets();
       renderMeasurePitchControls();
       tsSel.dispatchEvent(new Event('change'));
