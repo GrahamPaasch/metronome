@@ -319,6 +319,18 @@
           return;
         }
         audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+        // Track state changes so we can try to auto-recover
+        audioCtx.onstatechange = async () => {
+          if (DEBUG) console.log('AudioContext state:', audioCtx?.state);
+          if (!audioCtx) return;
+          if (audioCtx.state === 'suspended') {
+            try { await audioCtx.resume(); } catch {}
+          } else if (audioCtx.state === 'closed') {
+            // Mark for reinit on next use
+            audioCtx = null;
+            noiseBuf = null;
+          }
+        };
         noiseBuf = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
         const d = noiseBuf.getChannelData(0);
         for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -330,6 +342,16 @@
         if (audioCtx && audioCtx.state === 'suspended') {
           try { await audioCtx.resume(); } catch (e) { console.error('Failed to resume audio context', e); }
         }
+      }
+
+      // Recreate audio context if output devices change (e.g., BT profile switch)
+      async function recreateAudio() {
+        try { if (audioCtx) await audioCtx.close(); } catch {}
+        audioCtx = null;
+        noiseBuf = null;
+        initAudio();
+        // Best-effort resume; if blocked, next user gesture will unlock
+        try { await ensureAudio(); } catch {}
       }
 
       /* ---------- UI Refs ---------- */
@@ -1428,11 +1450,21 @@
       };
 
       /* ---------- Init ---------- */
-      // Unlock audio on first user interaction to satisfy autoplay policies
+      // Keep trying to unlock/resume on any user interaction, not just once
       const unlock = async () => { await ensureAudio(); };
       ['pointerdown','touchstart','keydown'].forEach(evt => {
-        window.addEventListener(evt, unlock, { once: true, passive: true });
+        window.addEventListener(evt, unlock, { passive: true });
       });
+      // Resume when tab regains focus/visibility
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) ensureAudio(); });
+      window.addEventListener('focus', () => { ensureAudio(); });
+      // Recreate audio pipeline on device changes (covers BT HFP<>A2DP profile swaps)
+      if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+        navigator.mediaDevices.addEventListener('devicechange', () => {
+          if (DEBUG) console.log('Media devices changed, recreating AudioContext');
+          recreateAudio();
+        });
+      }
       loadPresets();
       renderMeasurePitchControls();
       tsSel.dispatchEvent(new Event('change'));
