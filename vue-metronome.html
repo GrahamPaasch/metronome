@@ -90,8 +90,19 @@ createApp({
         this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
     },
-    playClick() {
+    async ensureAudio() {
       this.initAudio();
+      try {
+        if (this.audioCtx && this.audioCtx.state !== 'running') {
+          await this.audioCtx.resume();
+        }
+      } catch (e) {
+        console.error('Failed to resume AudioContext', e);
+      }
+    },
+    playClick() {
+      // Skip if audio is not running to avoid backlog on resume
+      if (!this.audioCtx || this.audioCtx.state !== 'running') return;
       const osc = this.audioCtx.createOscillator();
       const gain = this.audioCtx.createGain();
       osc.type = 'square';
@@ -102,7 +113,7 @@ createApp({
     },
     playDrone(start) {
       if (this.droneFreq <= 0) return;
-      this.initAudio();
+      if (!this.audioCtx || this.audioCtx.state !== 'running') return;
       this.droneOsc = this.audioCtx.createOscillator();
       this.droneOsc.frequency.value = this.droneFreq;
       this.droneOsc.connect(this.audioCtx.destination);
@@ -147,9 +158,10 @@ createApp({
       }
       this._tick++;
     },
-    start() {
+    async start() {
       if (this.running) return;
-      this.initAudio();
+      await this.ensureAudio();
+      if (this._timer) { clearTimeout(this._timer); this._timer = null; }
       this._tick = 0; this._measure = 1;
       this.running = true;
       this.scheduleTick();
