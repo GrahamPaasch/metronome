@@ -336,6 +336,30 @@
         for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       }
 
+      // One-time unlock on first user gesture (helps Safari/iOS)
+      const unlockOnce = async () => {
+        initAudio();
+        try { await ensureAudio(); } catch {}
+        // Tiny silent tick to fully unlock audio pipeline on iOS
+        try {
+          if (audioCtx && audioCtx.state === 'running') {
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            g.gain.value = 0.0001;
+            osc.connect(g).connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.005);
+          }
+        } catch {}
+        ['pointerdown','touchstart','keydown','mousedown'].forEach(evt =>
+          window.removeEventListener(evt, unlockOnce, { capture: true })
+        );
+      };
+      ['pointerdown','touchstart','keydown','mousedown'].forEach(evt =>
+        window.addEventListener(evt, unlockOnce, { capture: true, once: true })
+      );
+
       // Ensure audio is ready and resumed; call from user-driven events and playback helpers
       async function ensureAudio() {
         if (!audioCtx) initAudio();
@@ -411,6 +435,7 @@
       let polyAcc = 0;
       let scheduledPolyBeats = [];
       let startTime = 0; // Track start time for drift correction
+      let nextClickTimeSec = 0; // AudioContext currentTime for next scheduled click
 
       // Drill state
       const drillCycle = [1,2,3,4];
@@ -763,6 +788,10 @@
         }
         return 1;
       }
+      function tickDurationSec(posInBeat) {
+        const base = 60 / currentBpm / currentSubdivision;
+        return base * computeSwingFactor(posInBeat);
+      }
 
       /* ---------- Session helpers ---------- */
       function fmtTime(ms) {
@@ -784,7 +813,7 @@
 
       /* ---------- Sound helpers ---------- */
       function playWood(vol) {
-        initAudio();
+        if (!audioCtx || audioCtx.state !== 'running') return;
         const now = audioCtx.currentTime;
         const src = audioCtx.createBufferSource(); src.buffer = noiseBuf;
         const filt = audioCtx.createBiquadFilter(); filt.type = 'bandpass'; filt.frequency.value = 2000; filt.Q.value = 5;
@@ -795,6 +824,7 @@
         src.start(now); src.stop(now + 0.05);
       }
       function playKick(vol) {
+        if (!audioCtx || audioCtx.state !== 'running') return;
         const now = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -807,6 +837,7 @@
         osc.start(now); osc.stop(now + 0.5);
       }
       function playSnare(vol) {
+        if (!audioCtx || audioCtx.state !== 'running') return;
         const now = audioCtx.currentTime;
         const noise = audioCtx.createBufferSource(); noise.buffer = noiseBuf;
         const band = audioCtx.createBiquadFilter(); band.type = 'bandpass'; band.frequency.value = 1000; band.Q.value = 0.7;
@@ -817,6 +848,7 @@
         noise.start(now); noise.stop(now + 0.2);
       }
       function playHiHat(vol) {
+        if (!audioCtx || audioCtx.state !== 'running') return;
         const now = audioCtx.currentTime;
         const noise = audioCtx.createBufferSource(); noise.buffer = noiseBuf;
         const high = audioCtx.createBiquadFilter(); high.type = 'highpass'; high.frequency.value = 6000;
@@ -828,9 +860,10 @@
       }
       function oscType(name) { return name === 'click' ? 'square' : name === 'tick' ? 'sine' : 'triangle'; }
       function oscFreq(name) { return name === 'click' ? 1000 : name === 'tick' ? 600 : 1200; }
-      function playTone(name, vol) {
-        // Fire-and-forget; startMetronome ensures audio is resumed
-        ensureAudio();
+      async function playTone(name, vol) {
+        // Ensure context is running; if resuming is blocked, skip this tick
+        await ensureAudio();
+        if (!audioCtx || audioCtx.state !== 'running') return;
         if (name === 'wood')   return playWood(vol);
         if (name === 'kick')   return playKick(vol);
         if (name === 'snare')  return playSnare(vol);
@@ -891,8 +924,9 @@
           }
         }
       }
-      function playToneAtTime(name, vol, when) {
-        ensureAudio();
+      async function playToneAtTime(name, vol, when) {
+        await ensureAudio();
+        if (!audioCtx || audioCtx.state !== 'running') return null;
         const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
         let filt;
         if (name === 'click') {
@@ -1072,12 +1106,23 @@
           const accent = accentBoxes[beatIdx]?.checked ?? false;
           const selectedTone = accent ? (accentToneBoxes[beatIdx]?.value || accentToneSel.value) : toneSel.value;
           if (!audioCtx) initAudio();
+          const when = (audioCtx && audioCtx.state === 'running')
+            ? Math.max(audioCtx.currentTime, nextClickTimeSec || (audioCtx.currentTime + 0.01))
+            : null;
           if (isMain) {
-            playTone(selectedTone, accent ? +accentVolCtrl.value : +volCtrl.value);
+            if (when != null) {
+              playToneAtTime(selectedTone, accent ? +accentVolCtrl.value : +volCtrl.value, when);
+            } else {
+              playTone(selectedTone, accent ? +accentVolCtrl.value : +volCtrl.value);
+            }
             sessionBeats++;
             updateSessionUI();
           } else {
-            playTone(subToneSel.value, +subVolCtrl.value);
+            if (when != null) {
+              playToneAtTime(subToneSel.value, +subVolCtrl.value, when);
+            } else {
+              playTone(subToneSel.value, +subVolCtrl.value);
+            }
           }
         }
 
@@ -1085,6 +1130,7 @@
         if (polyEnableChk.checked) {
           for (const pos of crossPositions) {
             if (ticksInMeasure === pos) {
+              // Polyrhythm clicks are scheduled at exact times already
               playTone(polyToneSel.value, +polyVolCtrl.value);
             }
           }
@@ -1099,6 +1145,10 @@
         drawNotation(ticksInMeasure);
         const prevMeasureMuted = measureMuted;
         ticks++; ticksInMeasure++;
+        // advance audio schedule for next tick
+        nextClickTimeSec = (audioCtx && audioCtx.state === 'running')
+          ? (nextClickTimeSec || (audioCtx.currentTime + 0.01)) + tickDurationSec(posInBeat)
+          : 0;
 
         // Reset on new measure
         if (ticksInMeasure >= currentMeter * currentSubdivision) {
@@ -1148,6 +1198,7 @@
           drawNotation(0);
           // Initialize/unlock audio in response to user action
           await ensureAudio();
+          nextClickTimeSec = (audioCtx && audioCtx.state === 'running') ? audioCtx.currentTime + 0.05 : 0;
           
           startTime = Date.now(); // Initialize start time
           // Init session metrics
@@ -1171,7 +1222,7 @@
           stopMetronome();
         }
       }
-      function stopMetronome() {
+      async function stopMetronome() {
         clearTimeout(timerId);
         startBtn.disabled = false; stopBtn.disabled = true;
         
@@ -1190,9 +1241,8 @@
           scheduledPolyBeats = [];
           stopHum();
 
-          audioCtx.close();
-          audioCtx = null;
-          noiseBuf = null;
+          // Prefer suspend over close to keep context unlocked across starts
+          try { await audioCtx.suspend(); } catch {}
         }
         // Clean up notation
         clearNotation();
