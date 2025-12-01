@@ -3,14 +3,14 @@
  */
 
 import { BaseAgent } from './BaseAgent';
+import { AudioContextManager } from './AudioContextManager';
 import type { AudioAgentConfig, TuningSystem, InstrumentVoicing, BeatEvent } from '../types';
 import { DEFAULT_TUNING } from '../types';
 import { Chord } from 'tonal';
 
 export class AudioAgent extends BaseAgent {
   private config: AudioAgentConfig;
-  private audioContext: AudioContext | null = null;
-  private masterGainNode: GainNode | null = null;
+  private contextManager: AudioContextManager;
   private clickGainNode: GainNode | null = null;
   private harmonyGainNode: GainNode | null = null;
   private droneGainNode: GainNode | null = null;
@@ -29,6 +29,7 @@ export class AudioAgent extends BaseAgent {
 
   constructor(config: Partial<AudioAgentConfig> = {}) {
     super();
+    this.contextManager = AudioContextManager.getInstance();
     this.config = {
       tuningSystem: config.tuningSystem ?? DEFAULT_TUNING,
       masterVolume: config.masterVolume ?? 0.7,
@@ -36,6 +37,20 @@ export class AudioAgent extends BaseAgent {
       harmonyVolume: config.harmonyVolume ?? 0.6,
       droneVolume: config.droneVolume ?? 0.4
     };
+  }
+
+  /**
+   * Get the shared AudioContext
+   */
+  private get audioContext(): AudioContext | null {
+    return this.contextManager.getContext();
+  }
+
+  /**
+   * Get the shared master gain node
+   */
+  private get masterGainNode(): GainNode | null {
+    return this.contextManager.getMasterGainNode();
   }
 
   async initialize(): Promise<void> {
@@ -49,31 +64,27 @@ export class AudioAgent extends BaseAgent {
   }
 
   /**
-   * Initialize AudioContext with user interaction
+   * Initialize AudioContext with user interaction (uses shared manager)
    */
   private async initializeAudioContext(): Promise<void> {
-    if (this.audioContext) return;
+    if (this.audioContext && this.clickGainNode) return;
 
     try {
-      // Initialize Web Audio Context
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
-      // Resume context if suspended
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
+      // Initialize shared AudioContext
+      const ctx = await this.contextManager.initialize();
+
+      // Create gain nodes for different audio types (agent-specific)
+      this.clickGainNode = ctx.createGain();
+      this.harmonyGainNode = ctx.createGain();
+      this.droneGainNode = ctx.createGain();
+
+      // Connect to shared master gain
+      const masterGain = this.contextManager.getMasterGainNode();
+      if (masterGain) {
+        this.clickGainNode.connect(masterGain);
+        this.harmonyGainNode.connect(masterGain);
+        this.droneGainNode.connect(masterGain);
       }
-
-      // Create gain nodes for different audio types
-      this.masterGainNode = this.audioContext.createGain();
-      this.clickGainNode = this.audioContext.createGain();
-      this.harmonyGainNode = this.audioContext.createGain();
-      this.droneGainNode = this.audioContext.createGain();
-
-      // Set up gain node chain
-      this.clickGainNode.connect(this.masterGainNode);
-      this.harmonyGainNode.connect(this.masterGainNode);
-      this.droneGainNode.connect(this.masterGainNode);
-      this.masterGainNode.connect(this.audioContext.destination);
 
       // Set initial volumes
       this.updateVolumes();

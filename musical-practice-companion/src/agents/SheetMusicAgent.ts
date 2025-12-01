@@ -4,6 +4,7 @@
  */
 
 import { BaseAgent } from './BaseAgent';
+import { AudioContextManager } from './AudioContextManager';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { 
   SheetMusicTranscription, 
@@ -17,14 +18,22 @@ export class SheetMusicAgent extends BaseAgent {
   private playbackState: 'stopped' | 'playing' | 'paused' = 'stopped';
   private playbackPosition: number = 0; // current beat position
   private playbackInterval: number | null = null;
-  private audioContext: AudioContext | null = null;
+  private contextManager: AudioContextManager;
   private currentTempo: number = 120;
   private readonly backendUrl: string;
 
   constructor() {
     super();
+    this.contextManager = AudioContextManager.getInstance();
     this.backendUrl = 'http://localhost:8000';
     this.initializePdfJs();
+  }
+
+  /**
+   * Get the shared AudioContext
+   */
+  private get audioContext(): AudioContext | null {
+    return this.contextManager.getContext();
   }
 
   private initializePdfJs(): void {
@@ -218,15 +227,11 @@ export class SheetMusicAgent extends BaseAgent {
   }
 
   /**
-   * Initialize Web Audio Context
+   * Initialize Web Audio Context (uses shared manager)
    */
   private async initializeAudioContext(): Promise<void> {
-    if (!this.audioContext) {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
-      }
+    if (!this.contextManager.isReady) {
+      await this.contextManager.initialize();
     }
   }
 

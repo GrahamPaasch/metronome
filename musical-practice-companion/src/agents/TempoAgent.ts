@@ -3,6 +3,7 @@
  */
 
 import { BaseAgent } from './BaseAgent';
+import { AudioContextManager } from './AudioContextManager';
 import type { 
   TempoAgentConfig, 
   BeatEvent, 
@@ -19,7 +20,7 @@ import {
 
 export class TempoAgent extends BaseAgent {
   private config: TempoAgentConfig;
-  private audioContext: AudioContext | null = null;
+  private contextManager: AudioContextManager;
   private schedulerId: number | null = null;
   private nextNoteTime = 0;
   private currentMeasure = 1;
@@ -36,6 +37,7 @@ export class TempoAgent extends BaseAgent {
 
   constructor(config: Partial<TempoAgentConfig> = {}) {
     super();
+    this.contextManager = AudioContextManager.getInstance();
     this.config = {
       bpm: config.bpm ?? DEFAULT_BPM,
       timeSignature: config.timeSignature ?? DEFAULT_TIME_SIGNATURE,
@@ -59,6 +61,13 @@ export class TempoAgent extends BaseAgent {
     };
   }
 
+  /**
+   * Get the shared AudioContext
+   */
+  private get audioContext(): AudioContext | null {
+    return this.contextManager.getContext();
+  }
+
   async initialize(): Promise<void> {
     try {
       // Don't create AudioContext here - defer until user interaction
@@ -69,17 +78,13 @@ export class TempoAgent extends BaseAgent {
   }
 
   /**
-   * Initialize AudioContext with user interaction
+   * Initialize AudioContext with user interaction (uses shared manager)
    */
   private async initializeAudioContext(): Promise<void> {
-    if (this.audioContext) return;
+    if (this.contextManager.isReady) return;
 
     try {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
-      }
+      await this.contextManager.initialize();
     } catch (error) {
       throw new Error(`Failed to initialize AudioContext: ${error}`);
     }
