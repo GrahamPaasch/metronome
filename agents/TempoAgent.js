@@ -8,6 +8,8 @@ export class TempoAgent extends EventTarget {
     this._tick = 0;
     this._nextNoteTime = 0;
     this._audioContext = null;
+    this._isPaused = false;
+    this._pausedTick = 0;
     
     // Scheduling constants - lookahead for sample-accurate timing
     this._scheduleAheadTime = 0.1; // How far ahead to schedule (seconds)
@@ -89,13 +91,61 @@ export class TempoAgent extends EventTarget {
       return;
     }
 
-    // Initialize timing
+    // Initialize timing - resume from paused position if applicable
     this._nextNoteTime = ctx.currentTime;
-    this._tick = 0;
+    if (!this._isPaused) {
+      this._tick = 0;
+    } else {
+      this._tick = this._pausedTick;
+      this._isPaused = false;
+    }
 
     // Start the scheduler
     this._scheduler();
     this._schedulerId = setInterval(() => this._scheduler(), this._schedulerInterval);
+  }
+
+  /**
+   * Pause the metronome, preserving current position
+   */
+  pause() {
+    if (this._schedulerId === null) return;
+    
+    this._pausedTick = this._tick;
+    this._isPaused = true;
+    
+    clearInterval(this._schedulerId);
+    this._schedulerId = null;
+    
+    this.dispatchEvent(new CustomEvent('pause', { 
+      detail: { tick: this._pausedTick } 
+    }));
+  }
+
+  /**
+   * Resume the metronome from paused position
+   */
+  resume() {
+    if (!this._isPaused) return;
+    this.start(); // start() will detect isPaused and resume from saved position
+    
+    this.dispatchEvent(new CustomEvent('resume', { 
+      detail: { tick: this._tick } 
+    }));
+  }
+
+  /**
+   * Check if the metronome is currently paused
+   */
+  get isPaused() {
+    return this._isPaused;
+  }
+
+  /**
+   * Check if the metronome is currently running
+   */
+  get isRunning() {
+    return this._schedulerId !== null;
   }
 
   stop() {
@@ -104,6 +154,8 @@ export class TempoAgent extends EventTarget {
       this._schedulerId = null;
     }
     this._tick = 0;
+    this._isPaused = false;
+    this._pausedTick = 0;
   }
 
   setBpm(bpm) {
