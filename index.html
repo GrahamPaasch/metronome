@@ -239,6 +239,54 @@
       flex-wrap: wrap;
       align-items: center;
     }
+    
+    /* Tap-to-rhythm */
+    .rhythm-builder .rb-tap-section {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      text-align: center;
+    }
+    .rhythm-builder .rb-tap-btn {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, var(--accent-color), #2E7D32);
+      color: #fff;
+      font-size: 1.2rem;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+      transition: all 0.1s ease;
+      user-select: none;
+    }
+    .rhythm-builder .rb-tap-btn:active,
+    .rhythm-builder .rb-tap-btn.tapping {
+      transform: scale(0.95);
+      box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+    }
+    .rhythm-builder .rb-tap-btn.recording {
+      background: linear-gradient(145deg, #f44336, #c62828);
+      animation: pulse 0.5s infinite alternate;
+    }
+    @keyframes pulse {
+      from { box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4); }
+      to { box-shadow: 0 4px 25px rgba(244, 67, 54, 0.7); }
+    }
+    .rhythm-builder .rb-tap-info {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+    .rhythm-builder .rb-tap-controls {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+    
     .rhythm-builder .rb-library {
       margin-top: 1rem;
       padding-top: 1rem;
@@ -850,6 +898,28 @@
         <label>
           Volume: <input type="range" id="rbVolume" min="0" max="1" step="0.01" value="0.8">
         </label>
+      </div>
+
+      <!-- Tap to Rhythm -->
+      <div class="rb-tap-section">
+        <button class="rb-tap-btn" id="rbTapBtn">TAP<br>RHYTHM</button>
+        <div class="rb-tap-info" id="rbTapInfo">Tap the button to record a rhythm pattern</div>
+        <div class="rb-tap-controls">
+          <button id="rbTapStart" class="action">🎤 Start Recording</button>
+          <button id="rbTapStop" class="action" disabled>⏹ Stop</button>
+          <button id="rbTapApply" class="action" disabled>✓ Apply</button>
+        </div>
+        <div class="group" style="justify-content:center; margin-top:0.5rem;">
+          <label>Quantize: 
+            <select id="rbTapQuantize">
+              <option value="0">Off</option>
+              <option value="4" selected>Quarter</option>
+              <option value="8">Eighth</option>
+              <option value="16">Sixteenth</option>
+            </select>
+          </label>
+          <label>Reference BPM: <input type="number" id="rbTapBpm" value="100" min="30" max="300" style="width:60px"></label>
+        </div>
       </div>
 
       <!-- Pattern Library -->
@@ -2941,6 +3011,162 @@
           rbPattern.length = 0;
           patternData.pattern.forEach(p => rbPattern.push({ ...p }));
           rbRenderPattern();
+        }
+      });
+
+      /* ---------- Tap-to-Rhythm ---------- */
+      const rbTapBtn = $('rbTapBtn');
+      const rbTapInfo = $('rbTapInfo');
+      const rbTapStart = $('rbTapStart');
+      const rbTapStop = $('rbTapStop');
+      const rbTapApply = $('rbTapApply');
+      const rbTapQuantize = $('rbTapQuantize');
+      const rbTapBpm = $('rbTapBpm');
+      
+      let tapRecording = false;
+      let tapTimestamps = [];
+      let tapIntervals = [];
+
+      function startTapRecording() {
+        tapRecording = true;
+        tapTimestamps = [];
+        tapIntervals = [];
+        rbTapBtn.classList.add('recording');
+        rbTapBtn.textContent = 'TAP!';
+        rbTapInfo.textContent = 'Tap the button or press SPACE to record...';
+        rbTapStart.disabled = true;
+        rbTapStop.disabled = false;
+        rbTapApply.disabled = true;
+      }
+
+      function stopTapRecording() {
+        tapRecording = false;
+        rbTapBtn.classList.remove('recording');
+        rbTapBtn.textContent = 'TAP\nRHYTHM';
+        rbTapStart.disabled = false;
+        rbTapStop.disabled = true;
+        
+        if (tapTimestamps.length >= 2) {
+          // Calculate intervals
+          tapIntervals = [];
+          for (let i = 1; i < tapTimestamps.length; i++) {
+            tapIntervals.push(tapTimestamps[i] - tapTimestamps[i - 1]);
+          }
+          rbTapInfo.textContent = `Recorded ${tapTimestamps.length} taps. Click Apply to convert.`;
+          rbTapApply.disabled = false;
+        } else {
+          rbTapInfo.textContent = 'Need at least 2 taps. Try again.';
+          rbTapApply.disabled = true;
+        }
+      }
+
+      function recordTap() {
+        if (!tapRecording) return;
+        
+        const now = performance.now();
+        tapTimestamps.push(now);
+        
+        // Visual feedback
+        rbTapBtn.classList.add('tapping');
+        setTimeout(() => rbTapBtn.classList.remove('tapping'), 100);
+        
+        // Play click sound
+        if (audioCtx) {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.frequency.value = 800;
+          gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+          osc.connect(gain).connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.05);
+        }
+        
+        rbTapInfo.textContent = `Taps: ${tapTimestamps.length}`;
+      }
+
+      function applyTappedRhythm() {
+        if (tapIntervals.length === 0) return;
+        
+        const referenceBpm = +rbTapBpm.value || 100;
+        const beatDurationMs = 60000 / referenceBpm;
+        const quantizeLevel = +rbTapQuantize.value;
+        
+        // Convert intervals to beat durations
+        const durations = tapIntervals.map(interval => interval / beatDurationMs);
+        
+        // Quantize if requested
+        const quantizedDurations = durations.map(dur => {
+          if (quantizeLevel === 0) return dur;
+          
+          const subdivision = 4 / quantizeLevel; // e.g., 16ths = 0.25 beats
+          return Math.round(dur / subdivision) * subdivision;
+        });
+        
+        // Convert to note types
+        rbPattern.length = 0;
+        
+        for (const dur of quantizedDurations) {
+          const note = durationToNote(dur);
+          rbPattern.push(note);
+        }
+        
+        rbRenderPattern();
+        rbTapInfo.textContent = `Converted ${tapIntervals.length} intervals to notes.`;
+        rbTapApply.disabled = true;
+      }
+
+      function durationToNote(duration) {
+        // Map duration (in beats) to closest note type
+        // 4 = whole, 2 = half, 1 = quarter, 0.5 = eighth, 0.25 = sixteenth
+        
+        const noteTypes = [
+          { type: 'w', dur: 4, dotted: false },
+          { type: 'h', dur: 3, dotted: true },  // dotted half
+          { type: 'h', dur: 2, dotted: false },
+          { type: 'q', dur: 1.5, dotted: true }, // dotted quarter
+          { type: 'q', dur: 1, dotted: false },
+          { type: 'e', dur: 0.75, dotted: true }, // dotted eighth
+          { type: 'e', dur: 0.5, dotted: false },
+          { type: 's', dur: 0.25, dotted: false }
+        ];
+        
+        // Find closest match
+        let closest = noteTypes[0];
+        let minDiff = Math.abs(duration - closest.dur);
+        
+        for (const nt of noteTypes) {
+          const diff = Math.abs(duration - nt.dur);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closest = nt;
+          }
+        }
+        
+        return {
+          type: 'note',
+          baseType: closest.type,
+          duration: closest.dur,
+          dotted: closest.dotted
+        };
+      }
+
+      rbTapBtn.onmousedown = recordTap;
+      rbTapBtn.ontouchstart = (e) => { e.preventDefault(); recordTap(); };
+      
+      rbTapStart.onclick = () => {
+        ensureAudio();
+        startTapRecording();
+      };
+      rbTapStop.onclick = stopTapRecording;
+      rbTapApply.onclick = applyTappedRhythm;
+      
+      // Also allow spacebar for tapping when recording
+      document.addEventListener('keydown', e => {
+        if (e.code === 'Space' && tapRecording && 
+            !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+          e.preventDefault();
+          recordTap();
         }
       });
 
