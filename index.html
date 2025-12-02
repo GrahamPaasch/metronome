@@ -768,6 +768,35 @@
     </fieldset>
 
     <fieldset class="section">
+      <legend>Auto-Tempo Practice</legend>
+      <div class="group">
+        <label for="autoTempoEnable">Enable:</label>
+        <input type="checkbox" id="autoTempoEnable" aria-label="Enable auto-tempo increase">
+        <label for="autoTempoStart">Start BPM:</label>
+        <input type="number" id="autoTempoStart" min="20" max="400" value="60" aria-label="Starting tempo">
+        <label for="autoTempoTarget">Target BPM:</label>
+        <input type="number" id="autoTempoTarget" min="20" max="400" value="120" aria-label="Target tempo">
+      </div>
+      <div class="group">
+        <label for="autoTempoStep">Increase by:</label>
+        <input type="number" id="autoTempoStep" min="1" max="20" value="5" aria-label="BPM increase per step">
+        <span>BPM</span>
+        <label for="autoTempoMeasures">Every:</label>
+        <input type="number" id="autoTempoMeasures" min="1" max="32" value="4" aria-label="Measures between increases">
+        <span>measures</span>
+      </div>
+      <div class="group" id="autoTempoProgress" style="display: none;">
+        <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
+          <span>Progress:</span>
+          <div style="flex: 1; height: 20px; background: var(--bg-secondary, #eee); border-radius: 10px; overflow: hidden;">
+            <div id="autoTempoBar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #3498db, #2ecc71); transition: width 0.3s;"></div>
+          </div>
+          <span id="autoTempoStatus">60 → 120 BPM</span>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="section">
       <legend>Measure Pitches</legend>
       <div class="group">
         <label for="measureCount">Measures:</label>
@@ -1081,6 +1110,15 @@
       const checkpointBeepChk = $('checkpointBeep');
       const drillEnableChk = $('drillEnable'),
             drillMeasuresInput = $('drillMeasures');
+      // Auto-tempo practice refs
+      const autoTempoEnableChk = $('autoTempoEnable'),
+            autoTempoStartInput = $('autoTempoStart'),
+            autoTempoTargetInput = $('autoTempoTarget'),
+            autoTempoStepInput = $('autoTempoStep'),
+            autoTempoMeasuresInput = $('autoTempoMeasures'),
+            autoTempoProgressDiv = $('autoTempoProgress'),
+            autoTempoBar = $('autoTempoBar'),
+            autoTempoStatus = $('autoTempoStatus');
       const measureCountInput = $('measureCount'),
             humVolCtrl = $('humVolume'),
             measurePitchesDiv = $('measurePitches');
@@ -1128,6 +1166,11 @@
       let sessionStartTime = 0;
       let sessionBeats = 0;
       let sessionMeasures = 0;
+      
+      // Auto-tempo practice state
+      let autoTempoPracticeActive = false;
+      let autoTempoCurrentBpm = 0;
+      let autoTempoMeasureCounter = 0;
 
       // === Notation state ===
       let vfFactory = null;
@@ -1672,6 +1715,94 @@
         countInDisplay.remove();
         isCountingIn = false;
       }
+      
+      /* ---------- Auto-Tempo Practice ---------- */
+      function initAutoTempoPractice() {
+        const startBpm = parseInt(autoTempoStartInput.value, 10) || 60;
+        const targetBpm = parseInt(autoTempoTargetInput.value, 10) || 120;
+        
+        if (startBpm >= targetBpm) {
+          alert('Start BPM must be less than Target BPM');
+          autoTempoEnableChk.checked = false;
+          return false;
+        }
+        
+        autoTempoCurrentBpm = startBpm;
+        autoTempoMeasureCounter = 0;
+        autoTempoPracticeActive = true;
+        
+        // Set the starting BPM
+        bpmInput.value = startBpm;
+        currentBpm = startBpm;
+        
+        // Show progress bar
+        autoTempoProgressDiv.style.display = 'flex';
+        updateAutoTempoProgress();
+        return true;
+      }
+      
+      function updateAutoTempoProgress() {
+        const startBpm = parseInt(autoTempoStartInput.value, 10) || 60;
+        const targetBpm = parseInt(autoTempoTargetInput.value, 10) || 120;
+        const range = targetBpm - startBpm;
+        const progress = ((autoTempoCurrentBpm - startBpm) / range) * 100;
+        
+        autoTempoBar.style.width = progress + '%';
+        autoTempoStatus.textContent = `${autoTempoCurrentBpm} / ${targetBpm} BPM`;
+      }
+      
+      function showAutoTempoComplete() {
+        autoTempoStatus.textContent = '🎉 Target reached!';
+        autoTempoBar.style.width = '100%';
+        autoTempoBar.style.background = 'linear-gradient(90deg, #27ae60, #2ecc71)';
+        
+        // Flash celebration
+        const flash = document.createElement('div');
+        flash.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 48px;
+          font-weight: bold;
+          color: #27ae60;
+          z-index: 10000;
+          animation: celebrate 2s ease-out forwards;
+          pointer-events: none;
+        `;
+        flash.textContent = '🎉 Target BPM Reached!';
+        
+        if (!document.getElementById('celebrateStyle')) {
+          const style = document.createElement('style');
+          style.id = 'celebrateStyle';
+          style.textContent = `
+            @keyframes celebrate {
+              0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5); }
+              50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+              100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 2000);
+      }
+      
+      function resetAutoTempo() {
+        autoTempoPracticeActive = false;
+        autoTempoMeasureCounter = 0;
+        autoTempoProgressDiv.style.display = 'none';
+        autoTempoBar.style.width = '0%';
+        autoTempoBar.style.background = 'linear-gradient(90deg, #3498db, #2ecc71)';
+      }
+      
+      // Event listeners for auto-tempo
+      autoTempoEnableChk.addEventListener('change', () => {
+        if (!autoTempoEnableChk.checked) {
+          resetAutoTempo();
+        }
+      });
       
       function schedulePolyBeats(barStartTime) {
         if (!polyEnableChk.checked) return;
@@ -2281,6 +2412,26 @@
               drawNotation(0);
             }
           }
+          // Auto-tempo practice progression
+          if (autoTempoPracticeActive) {
+            autoTempoMeasureCounter++;
+            const measuresPerStep = Math.max(1, parseInt(autoTempoMeasuresInput.value, 10) || 4);
+            if (autoTempoMeasureCounter >= measuresPerStep) {
+              autoTempoMeasureCounter = 0;
+              const step = parseInt(autoTempoStepInput.value, 10) || 5;
+              const target = parseInt(autoTempoTargetInput.value, 10) || 120;
+              autoTempoCurrentBpm = Math.min(autoTempoCurrentBpm + step, target);
+              currentBpm = autoTempoCurrentBpm;
+              bpmInput.value = autoTempoCurrentBpm;
+              updateAutoTempoProgress();
+              
+              // Check if we've reached target
+              if (autoTempoCurrentBpm >= target) {
+                autoTempoPracticeActive = false;
+                showAutoTempoComplete();
+              }
+            }
+          }
           const now = audioCtx.currentTime;
           schedulePolyBeats(now);
           const nowMuted = isMeasureMuted(measureCount);
@@ -2328,6 +2479,16 @@
           drillIndex = drillCycle.indexOf(currentSubdivision);
           if (drillIndex < 0) drillIndex = 0;
           drillMeasureCounter = 0;
+          
+          // Init auto-tempo practice
+          if (autoTempoEnableChk.checked) {
+            if (!initAutoTempoPractice()) {
+              return; // Failed validation
+            }
+          } else {
+            resetAutoTempo();
+          }
+          
           schedulePolyBeats(audioCtx.currentTime);
           if (!isMeasureMuted(1)) {
             const pitch = measurePitchSelects[0]?.value || 'C4';
