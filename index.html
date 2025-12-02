@@ -3,9 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Browser Metronome</title>
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <meta name="theme-color" content="#4CAF50">
+  <title>Pro Metronome</title>
+  <meta name="description" content="Professional metronome with advanced features - tempo control, subdivisions, polyrhythms, practice modes, and more.">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#e74c3c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Metronome">
   <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
   <style>
     :root {
@@ -3454,6 +3460,84 @@
 
       // Initial render
       rbRenderPattern();
+      
+      // Register Service Worker for PWA
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('[PWA] Service Worker registered:', registration.scope);
+            
+            // Check for updates
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // New version available
+                  if (confirm('A new version of the metronome is available. Reload to update?')) {
+                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                    window.location.reload();
+                  }
+                }
+              });
+            });
+          })
+          .catch(err => console.log('[PWA] Service Worker registration failed:', err));
+      }
+      
+      // Handle install prompt for PWA
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        // Show install button in UI
+        const installBtn = document.createElement('button');
+        installBtn.id = 'installPWA';
+        installBtn.textContent = '📱 Install App';
+        installBtn.style.cssText = `
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          padding: 12px 20px;
+          background: var(--accent-color, #e74c3c);
+          color: white;
+          border: none;
+          border-radius: 25px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: bold;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+          z-index: 9999;
+          transition: transform 0.2s, box-shadow 0.2s;
+        `;
+        installBtn.addEventListener('mouseenter', () => {
+          installBtn.style.transform = 'scale(1.05)';
+          installBtn.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)';
+        });
+        installBtn.addEventListener('mouseleave', () => {
+          installBtn.style.transform = 'scale(1)';
+          installBtn.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
+        });
+        installBtn.addEventListener('click', async () => {
+          if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log('[PWA] Install prompt outcome:', outcome);
+            if (outcome === 'accepted') {
+              installBtn.remove();
+            }
+            deferredPrompt = null;
+          }
+        });
+        document.body.appendChild(installBtn);
+      });
+      
+      // Remove install button if already installed
+      window.addEventListener('appinstalled', () => {
+        const installBtn = document.getElementById('installPWA');
+        if (installBtn) installBtn.remove();
+        console.log('[PWA] App installed successfully');
+      });
     });
   </script>
 
