@@ -606,6 +606,23 @@
         <button id="start" aria-label="Start metronome">Start</button>
         <button id="stop" disabled aria-label="Stop metronome">Stop</button>
       </div>
+      <div class="group">
+        <label for="countIn">Count-in:</label>
+        <select id="countIn" aria-label="Count-in beats">
+          <option value="0">None</option>
+          <option value="1">1 beat</option>
+          <option value="2">2 beats</option>
+          <option value="4" selected>1 bar</option>
+          <option value="8">2 bars</option>
+        </select>
+        <label for="countInTone">Count-in tone:</label>
+        <select id="countInTone" aria-label="Count-in sound">
+          <option value="click">Click</option>
+          <option value="stick" selected>Stick</option>
+          <option value="bell">Bell</option>
+          <option value="wood">Woodblock</option>
+        </select>
+      </div>
     </fieldset>
 
     <fieldset class="section">
@@ -1049,7 +1066,8 @@
             swingAmtCtrl = $('swingAmount');
       const tapBtn = $('tap'),
             startBtn = $('start'),
-            stopBtn = $('stop');
+            stopBtn = $('stop'),
+            countInSel = $('countIn');
       const tableBody = document.querySelector('#tempoChangesTable tbody');
       const changeStart = $('changeStart'),
             changeType = $('changeType'),
@@ -1564,6 +1582,97 @@
           if (filt) filt.disconnect();
         }, 50);
       }
+
+      /* ---------- Count-in functionality ---------- */
+      let isCountingIn = false;
+      
+      async function playCountIn(countInValue) {
+        await ensureAudio();
+        if (!audioCtx || audioCtx.state !== 'running') return;
+        
+        isCountingIn = true;
+        const bpm = +bpmInput.value;
+        const meter = parseInt(tsSel.value.split('/')[0], 10);
+        const beatDuration = 60 / bpm;
+        
+        // Determine number of count-in beats
+        let countInBeats;
+        if (countInValue === '1bar') {
+          countInBeats = meter;
+        } else if (countInValue === '2bar') {
+          countInBeats = meter * 2;
+        } else {
+          countInBeats = parseInt(countInValue, 10);
+        }
+        
+        // Create visual feedback element
+        const countInDisplay = document.createElement('div');
+        countInDisplay.id = 'countInDisplay';
+        countInDisplay.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 120px;
+          font-weight: bold;
+          color: var(--accent-color, #e74c3c);
+          z-index: 10000;
+          text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+          pointer-events: none;
+          animation: countInPulse 0.3s ease-out;
+        `;
+        document.body.appendChild(countInDisplay);
+        
+        // Add animation style if not present
+        if (!document.getElementById('countInStyle')) {
+          const style = document.createElement('style');
+          style.id = 'countInStyle';
+          style.textContent = `
+            @keyframes countInPulse {
+              0% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+              100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        // Play count-in beats
+        for (let i = 0; i < countInBeats; i++) {
+          if (!isCountingIn) break; // Allow cancellation
+          
+          const beatNum = (i % meter) + 1;
+          const isAccent = beatNum === 1;
+          
+          // Update display
+          countInDisplay.textContent = beatNum;
+          countInDisplay.style.animation = 'none';
+          countInDisplay.offsetHeight; // Trigger reflow
+          countInDisplay.style.animation = 'countInPulse 0.3s ease-out';
+          
+          // Play sound
+          const tone = isAccent ? accentToneSel.value : toneSel.value;
+          const vol = isAccent ? +accentVolCtrl.value : +volCtrl.value;
+          playTone(tone, vol);
+          
+          // Flash the beat visualizer if visible
+          const flashDot = document.getElementById('flashDot');
+          if (flashDot) {
+            flashDot.style.transform = 'scale(1.3)';
+            flashDot.style.background = isAccent ? 'var(--accent-color, #e74c3c)' : 'var(--text-primary, #333)';
+            setTimeout(() => {
+              flashDot.style.transform = 'scale(1)';
+            }, 100);
+          }
+          
+          // Wait for next beat
+          await new Promise(resolve => setTimeout(resolve, beatDuration * 1000));
+        }
+        
+        // Remove display
+        countInDisplay.remove();
+        isCountingIn = false;
+      }
+      
       function schedulePolyBeats(barStartTime) {
         if (!polyEnableChk.checked) return;
         const count = parseInt(polyCountInput.value, 10);
@@ -2191,6 +2300,12 @@
 
       async function startMetronome() {
         try {
+          // Check for count-in
+          const countInValue = countInSel.value;
+          if (countInValue !== '0') {
+            await playCountIn(countInValue);
+          }
+          
           // reset state
           ticks = mainBeats = 0;
           ticksInMeasure = 0; measureCount = 1;
@@ -2228,6 +2343,12 @@
       }
       async function stopMetronome() {
         clearTimeout(timerId);
+        isCountingIn = false; // Stop any active count-in
+        
+        // Remove count-in display if present
+        const countInDisplay = document.getElementById('countInDisplay');
+        if (countInDisplay) countInDisplay.remove();
+        
         startBtn.disabled = false; stopBtn.disabled = true;
         
         // Stop visualization
