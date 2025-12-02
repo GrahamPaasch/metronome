@@ -45,6 +45,8 @@
     #start:hover { background:#45A049; }
     #addChange { background:#4CAF50; color:#fff; border:none; cursor:pointer; padding:0.5rem 1rem; }
     #addChange:hover { background:#45A049; }
+    #focusModeBtn { background: #2196F3; color:#fff; border:none; cursor:pointer; padding:0.5rem 1rem; border-radius:4px; }
+    #focusModeBtn:hover { background: #1976D2; }
     #notation { margin-top:2rem; border:1px solid #ccc; background:#fff; }
     table { width:100%; border-collapse:collapse; margin-top:0.5rem; }
     th,td { border:1px solid #ddd; padding:0.5rem; text-align:center; }
@@ -357,6 +359,135 @@
     }
     .pendulum-tick-left { left: 30%; transform: rotate(-30deg); }
     .pendulum-tick-right { right: 30%; transform: rotate(30deg); }
+
+    /* Fullscreen Focus Mode */
+    .focus-mode {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #1a1a2e;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .focus-mode .focus-visualizer {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      max-width: 800px;
+    }
+    .focus-mode .bouncing-ball-container,
+    .focus-mode .pendulum-container {
+      width: 100%;
+      height: 400px;
+    }
+    .focus-mode .bouncing-ball {
+      width: 80px;
+      height: 80px;
+    }
+    .focus-mode .bouncing-ball-shadow {
+      width: 80px;
+      height: 16px;
+    }
+    .focus-mode .beat-markers {
+      height: 50px;
+    }
+    .focus-mode .beat-marker {
+      width: 20px;
+      height: 20px;
+    }
+    .focus-mode .beat-marker.accent-marker {
+      width: 26px;
+      height: 26px;
+    }
+    .focus-mode .pendulum-arm {
+      height: 250px;
+    }
+    .focus-mode .pendulum-weight {
+      width: 60px;
+      height: 60px;
+    }
+    .focus-mode .pendulum-pivot {
+      width: 30px;
+      height: 30px;
+    }
+    .focus-mode .focus-info {
+      color: #fff;
+      text-align: center;
+      margin-top: 2rem;
+    }
+    .focus-mode .focus-bpm {
+      font-size: 5rem;
+      font-weight: bold;
+      color: #4CAF50;
+      line-height: 1;
+    }
+    .focus-mode .focus-meter {
+      font-size: 2rem;
+      color: #888;
+      margin-top: 0.5rem;
+    }
+    .focus-mode .focus-beat-counter {
+      font-size: 8rem;
+      font-weight: bold;
+      color: #fff;
+      opacity: 0.9;
+      margin: 1rem 0;
+      min-width: 150px;
+    }
+    .focus-mode .focus-controls {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .focus-mode .focus-controls button {
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .focus-mode .focus-exit {
+      background: #333;
+      color: #fff;
+    }
+    .focus-mode .focus-exit:hover {
+      background: #444;
+    }
+    .focus-mode .focus-playpause {
+      background: #4CAF50;
+      color: #fff;
+      min-width: 120px;
+    }
+    .focus-mode .focus-playpause:hover {
+      background: #45A049;
+    }
+    .focus-mode .focus-bpm-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .focus-mode .focus-bpm-btn {
+      width: 50px;
+      height: 50px;
+      font-size: 1.5rem;
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .focus-mode .focus-bpm-btn:hover {
+      background: #4CAF50;
+    }
   </style>
 </head>
 <body>
@@ -537,6 +668,7 @@
         </select>
         <label for="highContrast">High Contrast Visuals</label>
         <input type="checkbox" id="highContrast" aria-label="High contrast visuals">
+        <button id="focusModeBtn" type="button" aria-label="Enter focus mode">🎯 Focus Mode</button>
       </div>
     </fieldset>
 
@@ -1557,6 +1689,197 @@
       visualTypeSel.onchange = () => updateVisualization(visualTypeSel.value);
 
 
+      /* ---------- Focus Mode ---------- */
+      const focusMode = $('focusMode');
+      const focusModeBtn = $('focusModeBtn');
+      const focusVisualizer = $('focusVisualizer');
+      const focusBeatCounter = $('focusBeatCounter');
+      const focusBpm = $('focusBpm');
+      const focusMeter = $('focusMeter');
+      const focusPlayPause = $('focusPlayPause');
+      const focusExit = $('focusExit');
+      const focusBpmUp = $('focusBpmUp');
+      const focusBpmDown = $('focusBpmDown');
+      let inFocusMode = false;
+      let focusBeatIndex = 0;
+
+      function enterFocusMode() {
+        inFocusMode = true;
+        focusMode.style.display = 'flex';
+        
+        // Clone the current visualization into focus mode
+        const visType = visualTypeSel.value;
+        focusVisualizer.innerHTML = '';
+        
+        if (visType === 'ball' || visType === 'none') {
+          focusVisualizer.innerHTML = `
+            <div class="bouncing-ball-container">
+              <div class="bouncing-ball-shadow" id="focusBallShadow"></div>
+              <div class="bouncing-ball" id="focusBouncingBall"></div>
+              <div class="beat-markers" id="focusBeatMarkers"></div>
+            </div>
+          `;
+          // Rebuild markers for focus mode
+          const markersDiv = $('focusBeatMarkers');
+          for (let i = 0; i < currentMeter; i++) {
+            const marker = document.createElement('div');
+            marker.className = 'beat-marker';
+            if (accentBoxes[i] && accentBoxes[i].checked) {
+              marker.classList.add('accent-marker');
+            }
+            markersDiv.appendChild(marker);
+          }
+        } else if (visType === 'pendulum') {
+          focusVisualizer.innerHTML = `
+            <div class="pendulum-container">
+              <div class="pendulum-tick-left"></div>
+              <div class="pendulum-tick-right"></div>
+              <div class="pendulum-pivot"></div>
+              <div class="pendulum-arm" id="focusPendulumArm">
+                <div class="pendulum-weight"></div>
+              </div>
+            </div>
+          `;
+        }
+        
+        // Update info display
+        focusBpm.textContent = currentBpm;
+        focusMeter.textContent = tsSel.value;
+        focusBeatCounter.textContent = '-';
+        focusPlayPause.textContent = startBtn.disabled ? '⏹ Stop' : '▶ Start';
+        
+        // Request fullscreen
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
+      }
+
+      function exitFocusMode() {
+        inFocusMode = false;
+        focusMode.style.display = 'none';
+        focusBeatCounter.textContent = '-';
+        
+        // Exit fullscreen
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+
+      function updateFocusBeatDisplay(beatIdx, isAccent) {
+        if (!inFocusMode) return;
+        
+        focusBeatCounter.textContent = beatIdx + 1;
+        focusBpm.textContent = currentBpm;
+        
+        // Animate ball in focus mode
+        const focusBall = $('focusBouncingBall');
+        const focusShadow = $('focusBallShadow');
+        const focusMarkers = $('focusBeatMarkers');
+        
+        if (focusBall) {
+          focusBall.classList.toggle('accent', isAccent);
+          
+          const bpm = currentBpm;
+          const beatDuration = 60000 / bpm;
+          const startTime = performance.now();
+          
+          function animateFocusBall(now) {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / beatDuration, 1);
+            const maxHeight = 200;
+            const y = maxHeight * 4 * progress * (1 - progress);
+            const shadowScale = 1 - (y / maxHeight) * 0.5;
+            
+            focusBall.style.transform = `translateY(-${y}px)`;
+            if (focusShadow) {
+              focusShadow.style.transform = `scale(${shadowScale})`;
+              focusShadow.style.opacity = shadowScale;
+            }
+            
+            if (progress < 1 && inFocusMode) {
+              requestAnimationFrame(animateFocusBall);
+            }
+          }
+          requestAnimationFrame(animateFocusBall);
+        }
+        
+        // Update markers
+        if (focusMarkers) {
+          focusMarkers.querySelectorAll('.beat-marker').forEach((m, i) => {
+            m.classList.toggle('active', i === beatIdx);
+          });
+        }
+        
+        // Animate pendulum in focus mode
+        const focusPendulum = $('focusPendulumArm');
+        if (focusPendulum) {
+          const bpm = currentBpm;
+          const beatDuration = 60000 / bpm;
+          const startTime = performance.now();
+          const startAngle = pendulumDirection * 30;
+          const endAngle = -pendulumDirection * 30;
+          
+          function animateFocusPendulum(now) {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / beatDuration, 1);
+            const eased = progress < 0.5 
+              ? 2 * progress * progress 
+              : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+            const angle = startAngle + (endAngle - startAngle) * eased;
+            focusPendulum.style.transform = `rotate(${angle}deg)`;
+            
+            if (progress < 1 && inFocusMode) {
+              requestAnimationFrame(animateFocusPendulum);
+            } else if (progress >= 1) {
+              pendulumDirection *= -1;
+            }
+          }
+          requestAnimationFrame(animateFocusPendulum);
+        }
+      }
+
+      focusModeBtn.onclick = enterFocusMode;
+      focusExit.onclick = exitFocusMode;
+      
+      focusPlayPause.onclick = async () => {
+        if (startBtn.disabled) {
+          await stopMetronome();
+          focusPlayPause.textContent = '▶ Start';
+        } else {
+          await startMetronome();
+          focusPlayPause.textContent = '⏹ Stop';
+        }
+      };
+      
+      focusBpmUp.onclick = () => {
+        const newBpm = Math.min(300, currentBpm + (event.shiftKey ? 10 : 1));
+        bpmInput.value = newBpm;
+        currentBpm = newBpm;
+        focusBpm.textContent = newBpm;
+      };
+      
+      focusBpmDown.onclick = () => {
+        const newBpm = Math.max(30, currentBpm - (event.shiftKey ? 10 : 1));
+        bpmInput.value = newBpm;
+        currentBpm = newBpm;
+        focusBpm.textContent = newBpm;
+      };
+      
+      // Exit focus mode on Escape
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && inFocusMode) {
+          exitFocusMode();
+        }
+      });
+      
+      // Handle fullscreen exit (e.g., user presses F11)
+      document.addEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement && inFocusMode) {
+          // Stay in focus mode but without fullscreen
+        }
+      });
+
+
         function isMeasureMuted(num) {
         const playM = +playMeasuresInput.value;
         const muteM = +muteMeasuresInput.value;
@@ -1583,6 +1906,9 @@
           const isAccent = accentBoxes[beatIdx] && accentBoxes[beatIdx].checked;
           animateBounce(beatIdx, isAccent);
           animatePendulum(beatIdx);
+          
+          // Update focus mode display
+          updateFocusBeatDisplay(beatIdx, isAccent);
         } else {
           // Visual feedback for subdivision
           startBtn.classList.remove('sub-flash');
@@ -1779,6 +2105,12 @@
         
         // Stop visualization
         stopVisualization();
+        
+        // Update focus mode button
+        if (inFocusMode) {
+          focusPlayPause.textContent = '▶ Start';
+          focusBeatCounter.textContent = '-';
+        }
         
         // Clean up any active audio nodes
         if (audioCtx) {
@@ -2543,5 +2875,25 @@
       rbRenderPattern();
     });
   </script>
+
+  <!-- Focus Mode Overlay -->
+  <div class="focus-mode" id="focusMode" style="display:none;">
+    <div class="focus-visualizer" id="focusVisualizer">
+      <!-- Visualization will be moved here when in focus mode -->
+    </div>
+    <div class="focus-info">
+      <div class="focus-beat-counter" id="focusBeatCounter">-</div>
+      <div class="focus-bpm-controls">
+        <button class="focus-bpm-btn" id="focusBpmDown" aria-label="Decrease BPM">−</button>
+        <div class="focus-bpm" id="focusBpm">100</div>
+        <button class="focus-bpm-btn" id="focusBpmUp" aria-label="Increase BPM">+</button>
+      </div>
+      <div class="focus-meter" id="focusMeter">4/4</div>
+    </div>
+    <div class="focus-controls">
+      <button class="focus-playpause" id="focusPlayPause">▶ Start</button>
+      <button class="focus-exit" id="focusExit">✕ Exit</button>
+    </div>
+  </div>
 </body>
 </html>
