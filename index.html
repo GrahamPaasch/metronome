@@ -73,6 +73,161 @@
       0% { background: #0000FF; color: #fff; }
       100% { background: none; color: inherit; }
     }
+
+    /* Rhythm Builder Styles */
+    .rhythm-builder {
+      margin-top: 1rem;
+    }
+    .rhythm-builder .rb-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .rhythm-builder .rb-group {
+      display: flex;
+      gap: 0.25rem;
+      padding: 0.25rem;
+      background: #f0f0f0;
+      border-radius: 4px;
+    }
+    .rhythm-builder .rb-group-label {
+      font-size: 0.7rem;
+      color: #666;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+      display: block;
+    }
+    .rhythm-builder button {
+      min-width: 36px;
+      height: 36px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: all 0.15s ease;
+    }
+    .rhythm-builder button:hover {
+      background: #e8f5e9;
+      border-color: #4CAF50;
+    }
+    .rhythm-builder button.active {
+      background: #4CAF50;
+      color: #fff;
+      border-color: #388E3C;
+    }
+    .rhythm-builder button.modifier {
+      font-size: 0.9rem;
+      min-width: 50px;
+    }
+    .rhythm-builder button.action {
+      background: #2196F3;
+      color: #fff;
+      border-color: #1976D2;
+      padding: 0.5rem 1rem;
+    }
+    .rhythm-builder button.action:hover {
+      background: #1976D2;
+    }
+    .rhythm-builder button.danger {
+      background: #f44336;
+      color: #fff;
+      border-color: #d32f2f;
+    }
+    .rhythm-builder button.danger:hover {
+      background: #d32f2f;
+    }
+    .rhythm-builder .rb-display {
+      min-height: 120px;
+      background: #fff;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      margin: 1rem 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .rhythm-builder .rb-pattern-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      min-height: 40px;
+      background: #fafafa;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+    .rhythm-builder .rb-pattern-item {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 0.5rem;
+      background: #e3f2fd;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+    .rhythm-builder .rb-pattern-item.rest {
+      background: #f3e5f5;
+    }
+    .rhythm-builder .rb-pattern-item.tuplet {
+      background: #fff3e0;
+    }
+    .rhythm-builder .rb-pattern-item .remove {
+      cursor: pointer;
+      color: #999;
+      font-size: 0.8rem;
+    }
+    .rhythm-builder .rb-pattern-item .remove:hover {
+      color: #f44336;
+    }
+    .rhythm-builder .rb-controls {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .rhythm-builder .rb-library {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #eee;
+    }
+    .rhythm-builder .rb-library select {
+      min-width: 200px;
+      padding: 0.5rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    .rhythm-builder .rb-library-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .rhythm-builder .rb-library-item {
+      padding: 0.5rem;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .rhythm-builder .rb-library-item:hover {
+      background: #e8f5e9;
+      border-color: #4CAF50;
+    }
+    .rhythm-builder .rb-library-item .name {
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+    .rhythm-builder .rb-library-item .desc {
+      font-size: 0.75rem;
+      color: #666;
+    }
+    .rhythm-builder .rb-library-item .difficulty {
+      font-size: 0.7rem;
+      color: #4CAF50;
+    }
   </style>
 </head>
 <body>
@@ -285,6 +440,92 @@
         <select id="presetList" aria-label="Select preset to load"><option value="">-- Load Preset --</option></select>
         <button id="loadPreset" aria-label="Load selected preset">Load</button>
         <button id="deletePreset" aria-label="Delete selected preset">Delete</button>
+      </div>
+    </fieldset>
+
+    <!-- Rhythm Builder Section -->
+    <fieldset class="section rhythm-builder" id="rhythmBuilderSection">
+      <legend>Rhythm Builder</legend>
+      
+      <!-- Note/Rest Toolbar -->
+      <div class="rb-toolbar">
+        <div>
+          <span class="rb-group-label">Notes</span>
+          <div class="rb-group" id="rbNotes">
+            <button data-note="w" title="Whole note">𝅝</button>
+            <button data-note="h" title="Half note">𝅗𝅥</button>
+            <button data-note="q" title="Quarter note">♩</button>
+            <button data-note="e" title="Eighth note">♪</button>
+            <button data-note="s" title="Sixteenth note">𝅘𝅥𝅯</button>
+          </div>
+        </div>
+        <div>
+          <span class="rb-group-label">Rests</span>
+          <div class="rb-group" id="rbRests">
+            <button data-rest="w" title="Whole rest">𝄻</button>
+            <button data-rest="h" title="Half rest">𝄼</button>
+            <button data-rest="q" title="Quarter rest">𝄽</button>
+            <button data-rest="e" title="Eighth rest">𝄾</button>
+            <button data-rest="s" title="Sixteenth rest">𝄿</button>
+          </div>
+        </div>
+        <div>
+          <span class="rb-group-label">Modifiers</span>
+          <div class="rb-group" id="rbModifiers">
+            <button id="rbDot" class="modifier" title="Dotted (1.5x duration)">Dot</button>
+            <button id="rbTriplet" class="modifier" title="Triplet (3 in space of 2)">Trip</button>
+            <button id="rbQuint" class="modifier" title="Quintuplet (5 in space of 4)">Quint</button>
+          </div>
+        </div>
+        <div>
+          <span class="rb-group-label">Actions</span>
+          <div class="rb-group">
+            <button id="rbUndo" class="action" title="Remove last note">↩ Undo</button>
+            <button id="rbClear" class="danger" title="Clear all">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pattern display -->
+      <div class="rb-pattern-list" id="rbPatternList">
+        <span style="color:#999; font-size:0.9rem;">Click notes above to build your rhythm...</span>
+      </div>
+
+      <!-- VexFlow rendering -->
+      <div class="rb-display" id="rbDisplay"></div>
+
+      <!-- Controls -->
+      <div class="rb-controls">
+        <button id="rbPlay" class="action" title="Play pattern">▶ Play</button>
+        <button id="rbStop" class="action" title="Stop playback">⏹ Stop</button>
+        <label>
+          <input type="checkbox" id="rbLoop"> Loop
+        </label>
+        <label>
+          BPM: <input type="number" id="rbBpm" value="100" min="30" max="300" style="width:60px">
+        </label>
+        <label>
+          Volume: <input type="range" id="rbVolume" min="0" max="1" step="0.01" value="0.8">
+        </label>
+      </div>
+
+      <!-- Pattern Library -->
+      <div class="rb-library">
+        <div class="group">
+          <label>Load from Library:</label>
+          <select id="rbLibraryCategory">
+            <option value="">-- Select Category --</option>
+            <option value="basic">Basic Rhythms</option>
+            <option value="dotted">Dotted Rhythms</option>
+            <option value="syncopation">Syncopation</option>
+            <option value="triplets">Triplets</option>
+            <option value="compound">Compound Meter (6/8)</option>
+            <option value="oddMeter">Odd Meters</option>
+            <option value="latin">Latin Rhythms</option>
+            <option value="polyrhythm">Polyrhythms</option>
+          </select>
+        </div>
+        <div class="rb-library-grid" id="rbLibraryGrid"></div>
       </div>
     </fieldset>
   </div>
@@ -1518,6 +1759,468 @@
       loadPresets();
       renderMeasurePitchControls();
       tsSel.dispatchEvent(new Event('change'));
+
+      /* ---------- Rhythm Builder ---------- */
+      const rbPattern = [];
+      let rbModifiers = { dotted: false, triplet: false, quintuplet: false };
+      let rbPlaying = false;
+      let rbSchedulerId = null;
+      let rbNextNoteTime = 0;
+      let rbCurrentIndex = 0;
+
+      const rbPatternList = $('rbPatternList');
+      const rbDisplay = $('rbDisplay');
+      const rbLibraryGrid = $('rbLibraryGrid');
+      const rbLibraryCategory = $('rbLibraryCategory');
+      const rbBpmInput = $('rbBpm');
+      const rbVolumeCtrl = $('rbVolume');
+      const rbLoopChk = $('rbLoop');
+
+      // Note durations in beats
+      const noteDurations = {
+        'w': 4, 'h': 2, 'q': 1, 'e': 0.5, 's': 0.25
+      };
+
+      // Note symbols for display
+      const noteSymbols = {
+        'w': '𝅝', 'h': '𝅗𝅥', 'q': '♩', 'e': '♪', 's': '𝅘𝅥𝅯'
+      };
+      const restSymbols = {
+        'w': '𝄻', 'h': '𝄼', 'q': '𝄽', 'e': '𝄾', 's': '𝄿'
+      };
+
+      // Add note to pattern
+      function rbAddNote(baseType, isRest = false) {
+        let duration = noteDurations[baseType];
+        
+        // Apply modifiers
+        if (rbModifiers.dotted) duration *= 1.5;
+        if (rbModifiers.triplet) duration *= 2/3;
+        if (rbModifiers.quintuplet) duration *= 4/5;
+
+        rbPattern.push({
+          type: isRest ? 'rest' : 'note',
+          baseType,
+          duration,
+          dotted: rbModifiers.dotted,
+          triplet: rbModifiers.triplet,
+          quintuplet: rbModifiers.quintuplet
+        });
+
+        // Reset modifiers after use
+        rbModifiers = { dotted: false, triplet: false, quintuplet: false };
+        updateModifierButtons();
+        rbRenderPattern();
+      }
+
+      // Render pattern list
+      function rbRenderPattern() {
+        if (rbPattern.length === 0) {
+          rbPatternList.innerHTML = '<span style="color:#999; font-size:0.9rem;">Click notes above to build your rhythm...</span>';
+        } else {
+          rbPatternList.innerHTML = rbPattern.map((item, idx) => {
+            const symbol = item.type === 'rest' 
+              ? restSymbols[item.baseType] 
+              : noteSymbols[item.baseType];
+            
+            let mods = '';
+            if (item.dotted) mods += '•';
+            if (item.triplet) mods += '³';
+            if (item.quintuplet) mods += '⁵';
+
+            const classes = [
+              'rb-pattern-item',
+              item.type === 'rest' ? 'rest' : '',
+              (item.triplet || item.quintuplet) ? 'tuplet' : ''
+            ].filter(Boolean).join(' ');
+
+            return `<span class="${classes}">
+              ${symbol}${mods}
+              <span class="remove" data-idx="${idx}">×</span>
+            </span>`;
+          }).join('');
+        }
+
+        // Render VexFlow notation
+        rbRenderVexFlow();
+      }
+
+      // Render VexFlow notation
+      function rbRenderVexFlow() {
+        rbDisplay.innerHTML = '';
+        if (rbPattern.length === 0) {
+          rbDisplay.innerHTML = '<span style="color:#999;">Pattern will appear here</span>';
+          return;
+        }
+
+        try {
+          const { Renderer, Stave, StaveNote, Voice, Formatter, Dot, Tuplet } = Vex.Flow;
+          
+          const width = rbDisplay.offsetWidth || 400;
+          const height = 120;
+          
+          const renderer = new Renderer(rbDisplay, Renderer.Backends.SVG);
+          renderer.resize(width, height);
+          const context = renderer.getContext();
+          
+          const stave = new Stave(10, 10, width - 20);
+          stave.addClef('percussion');
+          stave.draw(context);
+
+          // Convert pattern to VexFlow notes
+          const notes = [];
+          const tuplets = [];
+          let tupletNotes = [];
+          let lastTupletType = null;
+
+          for (const item of rbPattern) {
+            // Map duration to VexFlow duration string
+            let durStr = { 'w': 'w', 'h': 'h', 'q': 'q', 'e': '8', 's': '16' }[item.baseType];
+            if (item.dotted) durStr += 'd';
+            
+            const isRest = item.type === 'rest';
+            const keys = isRest ? ['b/4'] : ['c/5'];
+            
+            const note = new StaveNote({
+              keys,
+              duration: durStr + (isRest ? 'r' : ''),
+            });
+
+            if (item.dotted) {
+              Dot.buildAndAttach([note], { all: true });
+            }
+
+            notes.push(note);
+
+            // Handle tuplets
+            if (item.triplet) {
+              if (lastTupletType !== 'triplet') {
+                if (tupletNotes.length > 0) {
+                  tuplets.push(new Tuplet(tupletNotes));
+                }
+                tupletNotes = [];
+              }
+              tupletNotes.push(note);
+              lastTupletType = 'triplet';
+            } else if (item.quintuplet) {
+              if (lastTupletType !== 'quintuplet') {
+                if (tupletNotes.length > 0) {
+                  tuplets.push(new Tuplet(tupletNotes));
+                }
+                tupletNotes = [];
+              }
+              tupletNotes.push(note);
+              lastTupletType = 'quintuplet';
+            } else {
+              if (tupletNotes.length >= 3 && lastTupletType === 'triplet') {
+                tuplets.push(new Tuplet(tupletNotes, { num_notes: 3 }));
+                tupletNotes = [];
+              } else if (tupletNotes.length >= 5 && lastTupletType === 'quintuplet') {
+                tuplets.push(new Tuplet(tupletNotes, { num_notes: 5 }));
+                tupletNotes = [];
+              }
+              lastTupletType = null;
+            }
+          }
+
+          // Finalize any remaining tuplet
+          if (tupletNotes.length >= 3 && lastTupletType === 'triplet') {
+            tuplets.push(new Tuplet(tupletNotes, { num_notes: 3 }));
+          } else if (tupletNotes.length >= 5 && lastTupletType === 'quintuplet') {
+            tuplets.push(new Tuplet(tupletNotes, { num_notes: 5 }));
+          }
+
+          // Calculate total beats
+          const totalBeats = rbPattern.reduce((sum, item) => sum + item.duration, 0);
+          
+          // Create voice with calculated duration
+          const voice = new Voice({ num_beats: Math.ceil(totalBeats), beat_value: 4 }).setStrict(false);
+          voice.addTickables(notes);
+
+          new Formatter().joinVoices([voice]).format([voice], width - 50);
+          voice.draw(context, stave);
+
+          // Draw tuplets
+          for (const tuplet of tuplets) {
+            tuplet.setContext(context).draw();
+          }
+        } catch (err) {
+          console.error('VexFlow render error:', err);
+          rbDisplay.innerHTML = '<span style="color:#c00;">Error rendering notation</span>';
+        }
+      }
+
+      // Update modifier button states
+      function updateModifierButtons() {
+        $('rbDot').classList.toggle('active', rbModifiers.dotted);
+        $('rbTriplet').classList.toggle('active', rbModifiers.triplet);
+        $('rbQuint').classList.toggle('active', rbModifiers.quintuplet);
+      }
+
+      // Setup note buttons
+      document.querySelectorAll('#rbNotes button[data-note]').forEach(btn => {
+        btn.onclick = () => rbAddNote(btn.dataset.note, false);
+      });
+
+      document.querySelectorAll('#rbRests button[data-rest]').forEach(btn => {
+        btn.onclick = () => rbAddNote(btn.dataset.rest, true);
+      });
+
+      // Modifier buttons
+      $('rbDot').onclick = () => {
+        rbModifiers.dotted = !rbModifiers.dotted;
+        updateModifierButtons();
+      };
+      $('rbTriplet').onclick = () => {
+        rbModifiers.triplet = !rbModifiers.triplet;
+        if (rbModifiers.triplet) rbModifiers.quintuplet = false;
+        updateModifierButtons();
+      };
+      $('rbQuint').onclick = () => {
+        rbModifiers.quintuplet = !rbModifiers.quintuplet;
+        if (rbModifiers.quintuplet) rbModifiers.triplet = false;
+        updateModifierButtons();
+      };
+
+      // Undo and Clear
+      $('rbUndo').onclick = () => {
+        rbPattern.pop();
+        rbRenderPattern();
+      };
+      $('rbClear').onclick = () => {
+        if (rbPattern.length === 0 || confirm('Clear the entire pattern?')) {
+          rbPattern.length = 0;
+          rbRenderPattern();
+        }
+      };
+
+      // Remove individual notes
+      rbPatternList.addEventListener('click', e => {
+        if (e.target.classList.contains('remove')) {
+          const idx = parseInt(e.target.dataset.idx, 10);
+          rbPattern.splice(idx, 1);
+          rbRenderPattern();
+        }
+      });
+
+      // Playback
+      function rbScheduleNotes() {
+        const bpm = +rbBpmInput.value || 100;
+        const beatDuration = 60 / bpm;
+        const lookahead = 0.1;
+        const scheduleInterval = 25;
+
+        while (rbNextNoteTime < audioCtx.currentTime + lookahead) {
+          if (rbCurrentIndex >= rbPattern.length) {
+            if (rbLoopChk.checked) {
+              rbCurrentIndex = 0;
+            } else {
+              rbStopPlayback();
+              return;
+            }
+          }
+
+          const item = rbPattern[rbCurrentIndex];
+          const duration = item.duration * beatDuration;
+
+          if (item.type === 'note') {
+            // Play click sound
+            rbPlayClick(rbNextNoteTime);
+          }
+
+          rbNextNoteTime += duration;
+          rbCurrentIndex++;
+        }
+
+        rbSchedulerId = setTimeout(rbScheduleNotes, scheduleInterval);
+      }
+
+      function rbPlayClick(time) {
+        if (!audioCtx) return;
+        const volume = +rbVolumeCtrl.value;
+        
+        // Use a simple click similar to main metronome
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        
+        osc.frequency.value = 1000;
+        gain.gain.setValueAtTime(volume * 0.5, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+        
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(time);
+        osc.stop(time + 0.05);
+      }
+
+      function rbStartPlayback() {
+        if (rbPattern.length === 0) {
+          alert('Add some notes first!');
+          return;
+        }
+        
+        ensureAudio().then(() => {
+          rbPlaying = true;
+          rbCurrentIndex = 0;
+          rbNextNoteTime = audioCtx.currentTime + 0.05;
+          rbScheduleNotes();
+          $('rbPlay').disabled = true;
+          $('rbStop').disabled = false;
+        });
+      }
+
+      function rbStopPlayback() {
+        rbPlaying = false;
+        if (rbSchedulerId) {
+          clearTimeout(rbSchedulerId);
+          rbSchedulerId = null;
+        }
+        $('rbPlay').disabled = false;
+        $('rbStop').disabled = true;
+      }
+
+      $('rbPlay').onclick = rbStartPlayback;
+      $('rbStop').onclick = rbStopPlayback;
+      $('rbStop').disabled = true;
+
+      // Library
+      const RhythmLibrary = {
+        basic: {
+          name: 'Basic Rhythms',
+          patterns: [
+            { id: 'quarters', name: 'Quarter Notes', description: 'Four quarter notes', difficulty: 1,
+              pattern: [
+                { type: 'note', baseType: 'q', duration: 1, dotted: false },
+                { type: 'note', baseType: 'q', duration: 1, dotted: false },
+                { type: 'note', baseType: 'q', duration: 1, dotted: false },
+                { type: 'note', baseType: 'q', duration: 1, dotted: false }
+              ]
+            },
+            { id: 'eighths', name: 'Eighth Notes', description: 'Eight eighth notes', difficulty: 1,
+              pattern: [
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false }
+              ]
+            }
+          ]
+        },
+        dotted: {
+          name: 'Dotted Rhythms',
+          patterns: [
+            { id: 'dotted-quarter-eighth', name: 'Dotted Quarter + Eighth', description: 'Classic dotted rhythm', difficulty: 2,
+              pattern: [
+                { type: 'note', baseType: 'q', duration: 1.5, dotted: true },
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'note', baseType: 'q', duration: 1.5, dotted: true },
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false }
+              ]
+            },
+            { id: 'scotch-snap', name: 'Scotch Snap', description: 'Sixteenth + dotted eighth', difficulty: 3,
+              pattern: [
+                { type: 'note', baseType: 's', duration: 0.25, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.75, dotted: true },
+                { type: 'note', baseType: 's', duration: 0.25, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.75, dotted: true },
+                { type: 'note', baseType: 's', duration: 0.25, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.75, dotted: true },
+                { type: 'note', baseType: 's', duration: 0.25, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.75, dotted: true }
+              ]
+            }
+          ]
+        },
+        syncopation: {
+          name: 'Syncopation',
+          patterns: [
+            { id: 'offbeat-eighths', name: 'Offbeat Eighths', description: 'All notes on the "and"', difficulty: 3,
+              pattern: [
+                { type: 'rest', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'rest', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'rest', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'rest', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false }
+              ]
+            },
+            { id: 'tresillo', name: 'Tresillo', description: '3+3+2 pattern', difficulty: 3,
+              pattern: [
+                { type: 'note', baseType: 'q', duration: 1.5, dotted: true },
+                { type: 'note', baseType: 'q', duration: 1.5, dotted: true },
+                { type: 'note', baseType: 'q', duration: 1, dotted: false }
+              ]
+            }
+          ]
+        },
+        triplets: {
+          name: 'Triplets',
+          patterns: [
+            { id: 'eighth-triplets', name: 'Eighth Triplets', description: 'Three in the space of two', difficulty: 2,
+              pattern: Array(12).fill(null).map(() => ({ 
+                type: 'note', baseType: 'e', duration: 1/3, dotted: false, triplet: true 
+              }))
+            }
+          ]
+        },
+        latin: {
+          name: 'Latin Rhythms',
+          patterns: [
+            { id: 'bossa', name: 'Bossa Nova', description: 'Brazilian rhythm', difficulty: 4,
+              pattern: [
+                { type: 'note', baseType: 'q', duration: 1.5, dotted: true },
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'rest', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'note', baseType: 'e', duration: 0.5, dotted: false },
+                { type: 'note', baseType: 'q', duration: 1, dotted: false }
+              ]
+            }
+          ]
+        }
+      };
+
+      // Render library patterns
+      rbLibraryCategory.onchange = () => {
+        const cat = rbLibraryCategory.value;
+        if (!cat || !RhythmLibrary[cat]) {
+          rbLibraryGrid.innerHTML = '';
+          return;
+        }
+
+        const patterns = RhythmLibrary[cat].patterns;
+        rbLibraryGrid.innerHTML = patterns.map(p => `
+          <div class="rb-library-item" data-pattern-id="${p.id}">
+            <div class="name">${p.name}</div>
+            <div class="desc">${p.description}</div>
+            <div class="difficulty">${'★'.repeat(p.difficulty)}</div>
+          </div>
+        `).join('');
+      };
+
+      // Load pattern from library
+      rbLibraryGrid.addEventListener('click', e => {
+        const item = e.target.closest('.rb-library-item');
+        if (!item) return;
+
+        const cat = rbLibraryCategory.value;
+        const patternId = item.dataset.patternId;
+        const patternData = RhythmLibrary[cat]?.patterns.find(p => p.id === patternId);
+
+        if (patternData) {
+          // Copy pattern data
+          rbPattern.length = 0;
+          patternData.pattern.forEach(p => rbPattern.push({ ...p }));
+          rbRenderPattern();
+        }
+      });
+
+      // Initial render
+      rbRenderPattern();
     });
   </script>
 </body>
