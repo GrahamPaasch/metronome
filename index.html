@@ -8,11 +8,45 @@
   <meta name="theme-color" content="#4CAF50">
   <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
   <style>
+    :root {
+      --bg-primary: #f0f2f5;
+      --bg-secondary: #fff;
+      --bg-tertiary: #fafafa;
+      --bg-input: #fafafa;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-muted: #999;
+      --border-color: #ccc;
+      --border-light: #ddd;
+      --shadow-color: rgba(0,0,0,0.1);
+      --accent-color: #4CAF50;
+      --accent-hover: #45A049;
+      --accent-secondary: #2196F3;
+      --danger-color: #e74c3c;
+      --visualizer-bg: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
+    }
+    
+    body.dark-mode {
+      --bg-primary: #1a1a2e;
+      --bg-secondary: #16213e;
+      --bg-tertiary: #0f3460;
+      --bg-input: #1a1a2e;
+      --text-primary: #e8e8e8;
+      --text-secondary: #aaa;
+      --text-muted: #777;
+      --border-color: #333;
+      --border-light: #2a2a4a;
+      --shadow-color: rgba(0,0,0,0.3);
+      --visualizer-bg: linear-gradient(to bottom, #16213e 0%, #0f3460 100%);
+    }
+    
     body {
       font-family: sans-serif;
       margin: 0; padding: 2rem;
-      background: #f0f2f5; color: #333;
+      background: var(--bg-primary); 
+      color: var(--text-primary);
       display: flex; flex-direction: column; align-items: center;
+      transition: background 0.3s ease, color 0.3s ease;
     }
     h1 { margin-bottom: 1.5rem; }
     .controls {
@@ -20,9 +54,11 @@
       display: flex; flex-direction: column; gap: 1.5rem;
     }
     fieldset.section {
-      background: #fff; border: none;
+      background: var(--bg-secondary); 
+      border: none;
       border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 6px var(--shadow-color);
+      transition: background 0.3s ease;
       padding: 1rem;
     }
     legend { font-weight: bold; padding: 0 0.5rem; }
@@ -37,21 +73,31 @@
     .group input[type='range'],
     .group input[type='checkbox'] {
       font-size: 1rem; padding: 0.5rem;
-      border: 1px solid #ccc; border-radius: 4px;
-      background: #fafafa;
+      border: 1px solid var(--border-color); 
+      border-radius: 4px;
+      background: var(--bg-input);
+      color: var(--text-primary);
+      transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+    }
+    .group select option {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
     }
     .group input[type='checkbox'] { width: auto; }
-    #start { background: #4CAF50; color:#fff; border:none; cursor:pointer; padding:0.5rem 1rem; }
-    #start:hover { background:#45A049; }
-    #addChange { background:#4CAF50; color:#fff; border:none; cursor:pointer; padding:0.5rem 1rem; }
-    #addChange:hover { background:#45A049; }
-    #focusModeBtn { background: #2196F3; color:#fff; border:none; cursor:pointer; padding:0.5rem 1rem; border-radius:4px; }
+    #start { background: var(--accent-color); color:#fff; border:none; cursor:pointer; padding:0.5rem 1rem; }
+    #start:hover { background: var(--accent-hover); }
+    #addChange { background: var(--accent-color); color:#fff; border:none; cursor:pointer; padding:0.5rem 1rem; }
+    #addChange:hover { background: var(--accent-hover); }
+    #focusModeBtn { background: var(--accent-secondary); color:#fff; border:none; cursor:pointer; padding:0.5rem 1rem; border-radius:4px; }
     #focusModeBtn:hover { background: #1976D2; }
-    #notation { margin-top:2rem; border:1px solid #ccc; background:#fff; }
+    #darkModeBtn { background: #333; color:#fff; border:none; cursor:pointer; padding:0.5rem 1rem; border-radius:4px; }
+    body.dark-mode #darkModeBtn { background: #FFD700; color: #333; }
+    #darkModeBtn:hover { opacity: 0.9; }
+    #notation { margin-top:2rem; border:1px solid var(--border-color); background: var(--bg-secondary); }
     table { width:100%; border-collapse:collapse; margin-top:0.5rem; }
-    th,td { border:1px solid #ddd; padding:0.5rem; text-align:center; }
-    th { background:#f7f7f7; }
-    .remove-change { background:#e74c3c; color:#fff; border:none; padding:0.25rem 0.5rem; cursor:pointer; }
+    th,td { border:1px solid var(--border-light); padding:0.5rem; text-align:center; }
+    th { background: var(--bg-tertiary); }
+    .remove-change { background: var(--danger-color); color:#fff; border:none; padding:0.25rem 0.5rem; cursor:pointer; }
     .remove-change:hover { background:#c0392b; }
     #accentPattern label { display:inline-flex; align-items:center; margin-right:0.5rem; }
     #accentPattern select { margin-left:0.25rem; }
@@ -90,12 +136,12 @@
       display: flex;
       gap: 0.25rem;
       padding: 0.25rem;
-      background: #f0f0f0;
+      background: var(--bg-tertiary);
       border-radius: 4px;
     }
     .rhythm-builder .rb-group-label {
       font-size: 0.7rem;
-      color: #666;
+      color: var(--text-secondary);
       text-transform: uppercase;
       margin-bottom: 0.25rem;
       display: block;
@@ -103,19 +149,23 @@
     .rhythm-builder button {
       min-width: 36px;
       height: 36px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border-color);
       border-radius: 4px;
-      background: #fff;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
       cursor: pointer;
       font-size: 1.2rem;
       transition: all 0.15s ease;
     }
     .rhythm-builder button:hover {
       background: #e8f5e9;
-      border-color: #4CAF50;
+      border-color: var(--accent-color);
+    }
+    body.dark-mode .rhythm-builder button:hover {
+      background: #1a3a1a;
     }
     .rhythm-builder button.active {
-      background: #4CAF50;
+      background: var(--accent-color);
       color: #fff;
       border-color: #388E3C;
     }
@@ -124,7 +174,7 @@
       min-width: 50px;
     }
     .rhythm-builder button.action {
-      background: #2196F3;
+      background: var(--accent-secondary);
       color: #fff;
       border-color: #1976D2;
       padding: 0.5rem 1rem;
@@ -133,7 +183,7 @@
       background: #1976D2;
     }
     .rhythm-builder button.danger {
-      background: #f44336;
+      background: var(--danger-color);
       color: #fff;
       border-color: #d32f2f;
     }
@@ -142,8 +192,8 @@
     }
     .rhythm-builder .rb-display {
       min-height: 120px;
-      background: #fff;
-      border: 2px solid #ddd;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-light);
       border-radius: 8px;
       margin: 1rem 0;
       display: flex;
@@ -156,7 +206,7 @@
       gap: 0.5rem;
       padding: 0.5rem;
       min-height: 40px;
-      background: #fafafa;
+      background: var(--bg-tertiary);
       border-radius: 4px;
       margin-bottom: 1rem;
     }
@@ -192,13 +242,15 @@
     .rhythm-builder .rb-library {
       margin-top: 1rem;
       padding-top: 1rem;
-      border-top: 1px solid #eee;
+      border-top: 1px solid var(--border-light);
     }
     .rhythm-builder .rb-library select {
       min-width: 200px;
       padding: 0.5rem;
       border-radius: 4px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border-color);
+      background: var(--bg-input);
+      color: var(--text-primary);
     }
     .rhythm-builder .rb-library-grid {
       display: grid;
@@ -208,15 +260,18 @@
     }
     .rhythm-builder .rb-library-item {
       padding: 0.5rem;
-      background: #f5f5f5;
-      border: 1px solid #ddd;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-light);
       border-radius: 4px;
       cursor: pointer;
       transition: all 0.15s ease;
     }
     .rhythm-builder .rb-library-item:hover {
       background: #e8f5e9;
-      border-color: #4CAF50;
+      border-color: var(--accent-color);
+    }
+    body.dark-mode .rhythm-builder .rb-library-item:hover {
+      background: #1a3a1a;
     }
     .rhythm-builder .rb-library-item .name {
       font-weight: bold;
@@ -224,11 +279,11 @@
     }
     .rhythm-builder .rb-library-item .desc {
       font-size: 0.75rem;
-      color: #666;
+      color: var(--text-secondary);
     }
     .rhythm-builder .rb-library-item .difficulty {
       font-size: 0.7rem;
-      color: #4CAF50;
+      color: var(--accent-color);
     }
 
     /* Beat Visualizations */
@@ -238,10 +293,11 @@
       align-items: flex-end;
       height: 200px;
       margin: 1rem 0;
-      background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
+      background: var(--visualizer-bg);
       border-radius: 12px;
       overflow: hidden;
       position: relative;
+      transition: background 0.3s ease;
     }
     .beat-visualizer.hidden {
       display: none;
@@ -258,7 +314,7 @@
     .bouncing-ball {
       width: 50px;
       height: 50px;
-      background: radial-gradient(circle at 30% 30%, #4CAF50, #2E7D32);
+      background: radial-gradient(circle at 30% 30%, var(--accent-color), #2E7D32);
       border-radius: 50%;
       position: absolute;
       bottom: 10px;
@@ -293,12 +349,12 @@
     .beat-marker {
       width: 12px;
       height: 12px;
-      background: #ccc;
+      background: var(--text-muted);
       border-radius: 50%;
       transition: all 0.1s ease;
     }
     .beat-marker.active {
-      background: #4CAF50;
+      background: var(--accent-color);
       transform: scale(1.3);
       box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
     }
@@ -668,6 +724,7 @@
         </select>
         <label for="highContrast">High Contrast Visuals</label>
         <input type="checkbox" id="highContrast" aria-label="High contrast visuals">
+        <button id="darkModeBtn" type="button" aria-label="Toggle dark mode">🌙 Dark</button>
         <button id="focusModeBtn" type="button" aria-label="Enter focus mode">🎯 Focus Mode</button>
       </div>
     </fieldset>
@@ -2388,6 +2445,22 @@
       highContrastChk.onchange = () => {
         document.body.classList.toggle('hc', highContrastChk.checked);
       };
+
+      // Dark mode toggle
+      const darkModeBtn = $('darkModeBtn');
+      let darkMode = localStorage.getItem('metronomeDarkMode') === 'true';
+      
+      function applyDarkMode(enabled) {
+        darkMode = enabled;
+        document.body.classList.toggle('dark-mode', enabled);
+        darkModeBtn.textContent = enabled ? '☀️ Light' : '🌙 Dark';
+        localStorage.setItem('metronomeDarkMode', enabled);
+      }
+      
+      darkModeBtn.onclick = () => applyDarkMode(!darkMode);
+      
+      // Apply saved dark mode preference on load
+      applyDarkMode(darkMode);
 
       /* ---------- Init ---------- */
       // Keep trying to unlock/resume on any user interaction, not just once
