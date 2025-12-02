@@ -883,6 +883,7 @@
         <select id="presetList" aria-label="Select preset to load"><option value="">-- Load Preset --</option></select>
         <button id="loadPreset" aria-label="Load selected preset">Load</button>
         <button id="deletePreset" aria-label="Delete selected preset">Delete</button>
+        <button id="shareSettings" aria-label="Copy link to share current settings" style="background: #3498db;">🔗 Share</button>
       </div>
     </fieldset>
 
@@ -1132,7 +1133,8 @@
             loadBtn = $('loadPreset'),
             deleteBtn = $('deletePreset'),
             presetList = $('presetList'),
-            presetName = $('presetName');
+            presetName = $('presetName'),
+            shareBtn = $('shareSettings');
       const notationDiv = $('notation');
       const highContrastChk = $('highContrast');
       // Polyrhythm refs
@@ -2694,9 +2696,141 @@
         }
       };
 
+      /* ---------- Shareable URLs ---------- */
+      function getSettingsForURL() {
+        return {
+          bpm: bpmInput.value,
+          ts: tsSel.value,
+          sub: subdivisionSel.value,
+          grp: groupingSel.value,
+          tone: toneSel.value,
+          vol: volCtrl.value,
+          atone: accentToneSel.value,
+          avol: accentVolCtrl.value,
+          stone: subToneSel.value,
+          svol: subVolCtrl.value,
+          swing: swingTypeSel.value,
+          swamt: swingAmtCtrl.value,
+          countin: countInSel.value,
+          visual: visualTypeSel.value
+        };
+      }
+      
+      function generateShareURL() {
+        const settings = getSettingsForURL();
+        const params = new URLSearchParams();
+        
+        // Only include non-default values to keep URL short
+        const defaults = {
+          bpm: '100', ts: '4/4', sub: '1', grp: '', tone: 'click',
+          vol: '1', atone: 'click', avol: '1', stone: 'click', svol: '0.6',
+          swing: 'off', swamt: '0', countin: '0', visual: 'flash'
+        };
+        
+        for (const [key, value] of Object.entries(settings)) {
+          if (value !== defaults[key] && value !== '') {
+            params.set(key, value);
+          }
+        }
+        
+        const url = new URL(window.location.href.split('?')[0]);
+        url.search = params.toString();
+        return url.toString();
+      }
+      
+      function applyURLSettings() {
+        const params = new URLSearchParams(window.location.search);
+        
+        if (params.has('bpm')) bpmInput.value = Math.min(300, Math.max(20, parseInt(params.get('bpm')) || 100));
+        if (params.has('ts')) tsSel.value = params.get('ts');
+        if (params.has('sub')) subdivisionSel.value = params.get('sub');
+        if (params.has('grp')) groupingSel.value = params.get('grp');
+        if (params.has('tone')) toneSel.value = params.get('tone');
+        if (params.has('vol')) volCtrl.value = Math.min(1, Math.max(0, parseFloat(params.get('vol')) || 1));
+        if (params.has('atone')) accentToneSel.value = params.get('atone');
+        if (params.has('avol')) accentVolCtrl.value = Math.min(1, Math.max(0, parseFloat(params.get('avol')) || 1));
+        if (params.has('stone')) subToneSel.value = params.get('stone');
+        if (params.has('svol')) subVolCtrl.value = Math.min(1, Math.max(0, parseFloat(params.get('svol')) || 0.6));
+        if (params.has('swing')) swingTypeSel.value = params.get('swing');
+        if (params.has('swamt')) swingAmtCtrl.value = Math.min(1, Math.max(0, parseFloat(params.get('swamt')) || 0));
+        if (params.has('countin')) countInSel.value = params.get('countin');
+        if (params.has('visual')) visualTypeSel.value = params.get('visual');
+        
+        // Handle autostart parameter
+        if (params.has('autostart') && params.get('autostart') === '1') {
+          setTimeout(() => startMetronome(), 500);
+        }
+        
+        // Handle practice mode parameter
+        if (params.has('practice') && params.get('practice') === '1') {
+          autoTempoEnableChk.checked = true;
+        }
+        
+        updateGroupingOpts();
+        updateAccentPattern();
+      }
+      
+      function copyShareURL() {
+        const url = generateShareURL();
+        navigator.clipboard.writeText(url).then(() => {
+          showToast('Link copied to clipboard!');
+        }).catch(() => {
+          // Fallback for older browsers
+          const input = document.createElement('input');
+          input.value = url;
+          document.body.appendChild(input);
+          input.select();
+          document.execCommand('copy');
+          document.body.removeChild(input);
+          showToast('Link copied to clipboard!');
+        });
+      }
+      
+      function showToast(message) {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+          position: fixed;
+          bottom: 80px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: var(--text-primary, #333);
+          color: var(--bg-primary, #fff);
+          padding: 12px 24px;
+          border-radius: 25px;
+          font-size: 14px;
+          font-weight: 500;
+          z-index: 10000;
+          animation: toastIn 0.3s ease-out;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        `;
+        toast.textContent = message;
+        
+        if (!document.getElementById('toastStyle')) {
+          const style = document.createElement('style');
+          style.id = 'toastStyle';
+          style.textContent = `
+            @keyframes toastIn {
+              0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+              100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(toast);
+        setTimeout(() => {
+          toast.style.animation = 'toastIn 0.3s ease-out reverse';
+          setTimeout(() => toast.remove(), 300);
+        }, 2500);
+      }
+
       /* ---------- Event hooks ---------- */
       startBtn.onclick = startMetronome;
       stopBtn.onclick = stopMetronome;
+      shareBtn.onclick = copyShareURL;
+      
+      // Apply settings from URL on load
+      applyURLSettings();
       
       // Add keyboard shortcuts
       document.addEventListener('keydown', e => {
