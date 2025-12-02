@@ -611,6 +611,10 @@
         <button id="tap" aria-label="Tap to set tempo">Tap Tempo</button>
         <button id="start" aria-label="Start metronome">Start</button>
         <button id="stop" disabled aria-label="Stop metronome">Stop</button>
+        <span style="margin-left: 10px; font-size: 12px; color: var(--text-muted, #999); cursor: pointer;" 
+              onclick="showKeyboardHelp()" title="Press ? for keyboard shortcuts">
+          ⌨️ Press <kbd style="padding: 2px 5px; background: var(--bg-tertiary, #eee); border-radius: 3px; font-size: 11px;">?</kbd> for shortcuts
+        </span>
       </div>
       <div class="group">
         <label for="countIn">Count-in:</label>
@@ -2834,35 +2838,204 @@
       
       // Add keyboard shortcuts
       document.addEventListener('keydown', e => {
-        // Only handle if not in an input field
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+        // Only handle if not in an input field (unless it's a global shortcut)
+        const inInput = ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName);
+        
+        // Escape always works to stop
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          if (!stopBtn.disabled) stopMetronome();
+          if (inFocusMode) exitFocusMode();
+          return;
+        }
+        
+        // Other shortcuts only work outside inputs
+        if (inInput) return;
         
         switch(e.key.toLowerCase()) {
-          case ' ':  // Space bar
+          case ' ':  // Space bar - start/stop toggle
             e.preventDefault();
             if (!startBtn.disabled) startMetronome();
             else if (!stopBtn.disabled) stopMetronome();
             break;
+            
           case 't':  // Tap tempo
             e.preventDefault();
             tapBtn.click();
             break;
+            
           case 'arrowup':  // Increase BPM
             e.preventDefault();
             bpmInput.value = Math.min(300, +bpmInput.value + (e.shiftKey ? 10 : 1));
-            if (!startBtn.disabled) currentBpm = +bpmInput.value;
+            currentBpm = +bpmInput.value;
             break;
+            
           case 'arrowdown':  // Decrease BPM
             e.preventDefault();
-            bpmInput.value = Math.max(30, +bpmInput.value - (e.shiftKey ? 10 : 1));
-            if (!startBtn.disabled) currentBpm = +bpmInput.value;
+            bpmInput.value = Math.max(20, +bpmInput.value - (e.shiftKey ? 10 : 1));
+            currentBpm = +bpmInput.value;
             break;
-          case 'escape':  // Stop
+            
+          case 'arrowleft':  // Previous subdivision
             e.preventDefault();
-            if (!stopBtn.disabled) stopMetronome();
+            {
+              const idx = subdivisionSel.selectedIndex;
+              if (idx > 0) {
+                subdivisionSel.selectedIndex = idx - 1;
+                currentSubdivision = +subdivisionSel.value;
+              }
+            }
+            break;
+            
+          case 'arrowright':  // Next subdivision
+            e.preventDefault();
+            {
+              const idx = subdivisionSel.selectedIndex;
+              if (idx < subdivisionSel.options.length - 1) {
+                subdivisionSel.selectedIndex = idx + 1;
+                currentSubdivision = +subdivisionSel.value;
+              }
+            }
+            break;
+            
+          case 'f':  // Toggle focus mode
+            e.preventDefault();
+            if (inFocusMode) exitFocusMode();
+            else enterFocusMode();
+            break;
+            
+          case 'd':  // Toggle dark mode
+            e.preventDefault();
+            toggleDarkMode();
+            break;
+            
+          case 'm':  // Mute/unmute (toggle volume)
+            e.preventDefault();
+            {
+              const currentVol = parseFloat(volCtrl.value);
+              if (currentVol > 0) {
+                volCtrl.dataset.prevVol = currentVol;
+                volCtrl.value = 0;
+              } else {
+                volCtrl.value = volCtrl.dataset.prevVol || 1;
+              }
+            }
+            break;
+            
+          case 'v':  // Cycle visualization type
+            e.preventDefault();
+            {
+              const idx = visualTypeSel.selectedIndex;
+              visualTypeSel.selectedIndex = (idx + 1) % visualTypeSel.options.length;
+              updateVisualization();
+            }
+            break;
+            
+          case 's':  // Share current settings
+            e.preventDefault();
+            copyShareURL();
+            break;
+            
+          case '1': case '2': case '3': case '4': case '5':  // Quick subdivision select
+            e.preventDefault();
+            {
+              const subVal = e.key;
+              if ([...subdivisionSel.options].some(o => o.value === subVal)) {
+                subdivisionSel.value = subVal;
+                currentSubdivision = +subVal;
+              }
+            }
+            break;
+            
+          case '?':  // Show keyboard shortcuts help
+            e.preventDefault();
+            showKeyboardHelp();
             break;
         }
       });
+      
+      function showKeyboardHelp() {
+        const existing = document.getElementById('keyboardHelp');
+        if (existing) {
+          existing.remove();
+          return;
+        }
+        
+        const help = document.createElement('div');
+        help.id = 'keyboardHelp';
+        help.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: var(--bg-secondary, #fff);
+          color: var(--text-primary, #333);
+          padding: 30px;
+          border-radius: 15px;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+          z-index: 10001;
+          max-width: 500px;
+          font-family: system-ui, sans-serif;
+        `;
+        help.innerHTML = `
+          <h3 style="margin-top: 0; border-bottom: 2px solid var(--accent-color, #e74c3c); padding-bottom: 10px;">
+            ⌨️ Keyboard Shortcuts
+          </h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 5px 20px 5px 0;"><kbd>Space</kbd></td><td>Start / Stop</td></tr>
+            <tr><td style="padding: 5px 20px 5px 0;"><kbd>Esc</kbd></td><td>Stop & Exit Focus Mode</td></tr>
+            <tr><td style="padding: 5px 20px 5px 0;"><kbd>T</kbd></td><td>Tap tempo</td></tr>
+            <tr><td style="padding: 5px 20px 5px 0;"><kbd>↑</kbd> / <kbd>↓</kbd></td><td>Adjust BPM (±1)</td></tr>
+            <tr><td style="padding: 5px 20px 5px 0;"><kbd>Shift</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></td><td>Adjust BPM (±10)</td></tr>
+            <tr><td style="padding: 5px 20px 5px 0;"><kbd>←</kbd> / <kbd>→</kbd></td><td>Change subdivision</td></tr>
+            <tr><td style="padding: 5px 20px 5px 0;"><kbd>1-5</kbd></td><td>Quick subdivision select</td></tr>
+            <tr><td style="padding: 5px 20px 5px 0;"><kbd>F</kbd></td><td>Toggle focus mode</td></tr>
+            <tr><td style="padding: 5px 20px 5px 0;"><kbd>D</kbd></td><td>Toggle dark mode</td></tr>
+            <tr><td style="padding: 5px 20px 5px 0;"><kbd>M</kbd></td><td>Mute / Unmute</td></tr>
+            <tr><td style="padding: 5px 20px 5px 0;"><kbd>V</kbd></td><td>Cycle visualization</td></tr>
+            <tr><td style="padding: 5px 20px 5px 0;"><kbd>S</kbd></td><td>Share settings link</td></tr>
+            <tr><td style="padding: 5px 20px 5px 0;"><kbd>?</kbd></td><td>Show/hide this help</td></tr>
+          </table>
+          <div style="margin-top: 15px; text-align: center;">
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    style="padding: 8px 20px; cursor: pointer; border-radius: 5px; border: none; 
+                           background: var(--accent-color, #e74c3c); color: white; font-weight: bold;">
+              Got it!
+            </button>
+          </div>
+        `;
+        
+        // Add kbd styling
+        if (!document.getElementById('kbdStyle')) {
+          const style = document.createElement('style');
+          style.id = 'kbdStyle';
+          style.textContent = `
+            kbd {
+              display: inline-block;
+              padding: 3px 8px;
+              font-family: monospace;
+              font-size: 12px;
+              background: var(--bg-tertiary, #f0f0f0);
+              border: 1px solid var(--border-color, #ccc);
+              border-radius: 4px;
+              box-shadow: 0 2px 0 var(--border-color, #ccc);
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(help);
+        
+        // Close on click outside
+        setTimeout(() => {
+          document.addEventListener('click', function closeHelp(e) {
+            if (!help.contains(e.target)) {
+              help.remove();
+              document.removeEventListener('click', closeHelp);
+            }
+          });
+        }, 100);
+      }
       
       // Add input validation
       bpmInput.onchange = () => {
